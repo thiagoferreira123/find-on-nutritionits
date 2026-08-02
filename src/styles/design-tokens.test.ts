@@ -8,7 +8,7 @@ describe('DietSystem design tokens', () => {
     '--color-pri: #4ad395;',
     '--color-pri-hover: #3ec487;',
     '--color-fg: oklch(0.15 0.02 250);',
-    '--color-page: #f5f6f7;',
+    '--color-page: #ffffff;',
     '--color-surface: #ffffff;',
     '--color-pri-light: #f0fdf8;',
     '--font-family-sans: "Mulish", system-ui, sans-serif;',
