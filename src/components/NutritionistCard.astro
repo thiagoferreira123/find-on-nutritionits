@@ -34,11 +34,8 @@ const hasMetadata = hasRating || profile.onlineService || Boolean(place)
 
   <div class="card-bottom">
     {price && <><p class="eyebrow">Faixa por consulta</p><p class="price">{price}</p></>}
-    <div class="card-actions">
-      <a class="btn btn-outline btn-block" href={profileHref}>Ver perfil</a>
-      {profile.whatsapp
-        ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
-        : <a class="btn btn-primary btn-block" href={profileHref}>Conhecer</a>}
-    </div>
+    {profile.whatsapp
+      ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
+      : <a class="btn btn-outline btn-block" href={profileHref}>Pedir contato</a>}
   </div>
 </article>
