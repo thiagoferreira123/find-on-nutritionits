@@ -4,7 +4,7 @@ import CatalogHero from './CatalogHero.astro'
 import MetricScript from './MetricScript.astro'
 import NutritionistCard from './NutritionistCard.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
-import { buildCanonicalPath, searchParams, type CatalogSearch, type CatalogSeoCopy } from '../lib/catalog'
+import { catalogCardMatches, searchParams, type CatalogSearch, type CatalogSeoCopy } from '../lib/catalog'
 import type { CatalogListResponse } from '../lib/types'
 
 interface Props {
@@ -13,79 +13,78 @@ interface Props {
   response?: CatalogListResponse
   failed?: boolean
 }
+
 const { search, seo, response, failed = false } = Astro.props
-const canonicalPath = buildCanonicalPath(seo.canonicalPath, search.page)
-const profileQuery = searchParams(search).toString()
-const nextQuery = searchParams(search, { page: search.page + 1 }).toString()
-const previousQuery = searchParams(search, { page: search.page - 1 }).toString()
-const nextPath = response?.nextCursor ? `${seo.canonicalPath}${nextQuery ? `?${nextQuery}` : ''}` : undefined
-const previousPath = search.page > 1 ? `${seo.canonicalPath}${previousQuery ? `?${previousQuery}` : ''}` : undefined
+const items = response?.items ?? []
+const matchingItems = items.filter((profile) => catalogCardMatches(profile, search))
+const cleanSearch = { ...search, seed: undefined, page: 1 }
+const profileQuery = searchParams(cleanSearch).toString()
+const specialties = [...new Set(items.flatMap((profile) => profile.specialties).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+const cities = [...new Set(items.map((profile) => profile.city).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+const states = [...new Set(items.map((profile) => profile.state).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   name: seo.heading,
   description: seo.description,
-  numberOfItems: response?.items.length ?? 0,
-  itemListElement: response?.items.map((profile, index) => ({
+  numberOfItems: matchingItems.length,
+  itemListElement: matchingItems.map((profile, index) => ({
     '@type': 'ListItem',
     position: index + 1,
     url: new URL(`/nutricionistas/${profile.slug}`, Astro.site ?? Astro.url).href,
     name: profile.displayName,
-  })) ?? [],
-}
-const apiFilters = {
-  name: search.name,
-  specialty: search.specialty,
-  city: search.city,
-  state: search.state,
-  priceMin: search.priceMin,
-  priceMax: search.priceMax,
-  online: search.online,
-  seed: response?.seed ?? search.seed,
-  page: search.page,
+  })),
 }
 ---
 <BaseLayout
   title={seo.title}
   description={seo.description}
-  canonicalPath={canonicalPath}
-  previousPath={previousPath}
-  nextPath={nextPath}
+  canonicalPath={seo.canonicalPath}
   structuredData={structuredData}
 >
   <main>
     <CatalogHero title={seo.heading} description={seo.intro} />
     <section class="container listing" aria-labelledby="catalog-results-title">
-      <CatalogFilters search={{ ...search, seed: response?.seed ?? search.seed }} />
+      <CatalogFilters
+        search={{ ...search, seed: response?.seed ?? search.seed }}
+        specialties={specialties}
+        cities={cities}
+        states={states}
+      />
+
       <div class="results-head">
-        <h2 id="catalog-results-title">Nutricionistas disponíveis</h2>
-        {response && <p>{response.items.length} {response.items.length === 1 ? 'perfil nesta página' : 'perfis nesta página'}</p>}
+        <div>
+          <p class="results-eyebrow">Profissionais do DietSystem</p>
+          <h2 id="catalog-results-title">Nutricionistas disponíveis</h2>
+        </div>
+        {response && <p data-results-count>{matchingItems.length} {matchingItems.length === 1 ? 'profissional encontrado' : 'profissionais encontrados'}</p>}
       </div>
 
       {failed && <div class="error-state" role="alert">
         <h2>Não foi possível carregar os profissionais</h2>
-        <p>Verifique sua conexão e tente de novo.</p>
-        <a class="btn btn-outline btn-sm" style="margin-top:1rem" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a>
+        <p>Verifique sua conexão e tente novamente em instantes.</p>
+        <a class="btn btn-outline btn-sm state-action" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a>
       </div>}
 
-      {!failed && response?.items.length === 0 && <div class="empty-state">
-        <h2>Nenhum perfil encontrado</h2>
-        <p>Tente ampliar a região, remover um filtro ou buscar por outra especialidade.</p>
+      {!failed && items.length === 0 && <div class="empty-state">
+        <h2>Nenhum perfil disponível no momento</h2>
+        <p>Novos profissionais são adicionados ao catálogo regularmente.</p>
       </div>}
 
-      {!failed && response && response.items.length > 0 && <>
+      {!failed && items.length > 0 && <>
         <div class="card-grid" data-catalog-grid>
-          {response.items.map((profile) => <NutritionistCard profile={profile} query={profileQuery} whatsappContext={search.specialty} />)}
+          {items.map((profile) => <NutritionistCard
+            profile={profile}
+            query={profileQuery}
+            whatsappContext={search.specialty}
+            visible={catalogCardMatches(profile, search)}
+          />)}
         </div>
 
-        {(search.page > 1 || response.nextCursor) && <nav class="pagination" aria-label="Paginação do catálogo">
-          {search.page > 1 && <a class="page-link" rel="prev" href={`${Astro.url.pathname}${previousQuery ? `?${previousQuery}` : ''}`}>{search.page - 1}</a>}
-          <span class="page-link page-current" aria-current="page">{search.page}</span>
-          {response.nextCursor && <a class="page-link" rel="next" href={`${Astro.url.pathname}${nextQuery ? `?${nextQuery}` : ''}`}>{search.page + 1}</a>}
-        </nav>}
-
-        <div class="list-sentinel" data-list-sentinel data-next-cursor={response.nextCursor ?? ''}>
-          {response.nextCursor ? <button class="btn btn-outline btn-sm" type="button" data-load-more>Carregar mais profissionais</button> : 'Fim da lista'}
+        <div class="empty-state filter-empty-state" data-filter-empty hidden={matchingItems.length > 0}>
+          <h2>Nenhum profissional combina com esses filtros</h2>
+          <p>Remova um critério ou amplie a faixa de valor para ver mais opções.</p>
+          <button class="btn btn-outline btn-sm state-action" type="button" data-empty-clear>Limpar filtros</button>
         </div>
       </>}
     </section>
@@ -93,109 +92,148 @@ const apiFilters = {
   <MetricScript eventType="page_view" />
 </BaseLayout>
 
-<script is:inline define:vars={{ apiFilters, profileQuery }}>
-  const grid = document.querySelector('[data-catalog-grid]')
-  const sentinel = document.querySelector('[data-list-sentinel]')
-  const button = document.querySelector('[data-load-more]')
-  let cursor = sentinel?.getAttribute('data-next-cursor') || ''
-  let loading = false
+<script>
+  import { CATALOG_WHATSAPP_MESSAGE } from '../lib/catalog'
 
-  const initials = (name) => name.split(/\s+/).map((part) => part.match(/[\p{L}\p{N}]/u)?.[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase()
-  const money = (value) => `R$\u00a0${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
-  const price = (min, max) => min !== null && max !== null ? `${money(min)} – ${money(max)}` : min !== null ? `A partir de ${money(min)}` : max !== null ? `Até ${money(max)}` : ''
-  const whatsapp = (phone, context) => {
-    const digits = String(phone).replace(/\D/g, '')
-    const number = digits.startsWith('55') ? digits : `55${digits}`
-    const message = `Olá, te conheci no site do DietSystem e estou procurando nutricionista para: ${context || ''}`
-    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
-  }
-  const element = (tag, className, text) => {
-    const node = document.createElement(tag)
-    if (className) node.className = className
-    if (text !== undefined) node.textContent = text
-    return node
-  }
+  const form = document.querySelector<HTMLFormElement>('[data-catalog-filters]')
+  const cards = [...document.querySelectorAll<HTMLElement>('[data-profile-card]')]
+  const resultsCount = document.querySelector<HTMLElement>('[data-results-count]')
+  const filterStatus = document.querySelector<HTMLElement>('[data-filter-status]')
+  const filterEmpty = document.querySelector<HTMLElement>('[data-filter-empty]')
+  const clearButton = document.querySelector<HTMLElement>('[data-clear-filters]')
+  const emptyClearButton = document.querySelector<HTMLButtonElement>('[data-empty-clear]')
+  const advancedCount = document.querySelector<HTMLElement>('[data-advanced-count]')
+  const resultsTitle = document.querySelector<HTMLElement>('#catalog-results-title')
+  const advanced = form?.querySelector<HTMLDetailsElement>('details.advanced')
+  const stateInput = form?.elements.namedItem('state') as HTMLInputElement | null
+  const priceMinInput = form?.elements.namedItem('priceMin') as HTMLInputElement | null
+  const priceMaxInput = form?.elements.namedItem('priceMax') as HTMLInputElement | null
 
-  const renderCard = (profile) => {
-    const article = element('article', 'nutri-card')
-    const top = element('div', 'card-top')
-    if (profile.photoUrl) {
-      const image = element('img', 'avatar')
-      image.src = profile.photoUrl
-      image.alt = `Foto de ${profile.displayName}`
-      image.loading = 'lazy'
-      top.append(image)
-    } else {
-      top.append(element('span', 'avatar avatar-fallback', initials(profile.displayName)))
-    }
-    const content = element('div', 'card-content')
-    const heading = element('h2', 'card-title')
-    const link = element('a', '', profile.displayName)
-    link.href = `/nutricionistas/${encodeURIComponent(profile.slug)}${profileQuery ? `?${profileQuery}` : ''}`
-    heading.append(link)
-    content.append(heading)
-    const meta = element('p', 'card-meta')
-    const rating = profile.averageRating !== null && profile.reviewCount > 0
-      ? `★ ${Number(profile.averageRating).toFixed(1)} (${profile.reviewCount})`
-      : ''
-    const place = [profile.city, profile.state].filter(Boolean).join(', ')
-    const metadata = [rating, profile.onlineService ? 'Online' : '', place].filter(Boolean)
-    if (metadata.length) {
-      meta.textContent = metadata.join(' · ')
-      content.append(meta)
-    }
-    top.append(content)
-    article.append(top)
-    if (profile.specialties.length) {
-      const chips = element('ul', 'chips')
-      profile.specialties.slice(0, 3).forEach((name) => chips.append(element('li', 'chip', name)))
-      if (profile.specialties.length > 3) chips.append(element('li', 'chip chip-more', `+${profile.specialties.length - 3}`))
-      article.append(chips)
-    }
-    const bottom = element('div', 'card-bottom')
-    const formatted = price(profile.priceMin, profile.priceMax)
-    if (formatted) {
-      bottom.append(element('p', 'eyebrow', 'Faixa por consulta'))
-      bottom.append(element('p', 'price', formatted))
-    }
-    const action = element('a', `btn ${profile.whatsapp ? 'btn-primary' : 'btn-outline'} btn-block`, profile.whatsapp ? 'WhatsApp' : 'Pedir contato')
-    action.href = profile.whatsapp ? whatsapp(profile.whatsapp, apiFilters.specialty) : link.href
-    if (profile.whatsapp) {
-      action.target = '_blank'
-      action.rel = 'noreferrer'
-      action.dataset.metric = 'whatsapp_click'
-      action.dataset.profileId = profile.id
-    }
-    bottom.append(action)
-    article.append(bottom)
-    return article
+  const normalize = (value: string | undefined) => value?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim() ?? ''
+  const inputValue = (name: string) => {
+    const field = form?.elements.namedItem(name)
+    return field instanceof RadioNodeList ? field.value.trim() : field instanceof HTMLInputElement ? field.value.trim() : ''
+  }
+  const parseMoney = (value: string) => {
+    const clean = value.replace(',', '.')
+    return clean && /^\d+(?:\.\d+)?$/.test(clean) ? Number(clean) : undefined
   }
 
-  const loadMore = async () => {
-    if (!cursor || loading || !grid || !sentinel) return
-    loading = true
-    if (button) { button.disabled = true; button.textContent = 'Carregando…' }
-    try {
-      const params = new URLSearchParams()
-      Object.entries(apiFilters).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)) })
-      params.set('cursor', cursor)
-      const response = await fetch(`/api/nutritionists.json?${params}`)
-      if (!response.ok) throw new Error('request_failed')
-      const data = await response.json()
-      data.items.forEach((profile) => grid.append(renderCard(profile)))
-      cursor = data.nextCursor || ''
-      sentinel.setAttribute('data-next-cursor', cursor)
-      if (!cursor) sentinel.textContent = 'Fim da lista'
-    } catch {
-      if (button) button.textContent = 'Tentar carregar novamente'
-    } finally {
-      loading = false
-      if (button && cursor) { button.disabled = false; button.textContent = 'Carregar mais profissionais' }
+  const currentParams = () => {
+    const params = new URLSearchParams()
+    for (const name of ['name', 'specialty', 'city', 'state', 'priceMin', 'priceMax', 'online']) {
+      const value = inputValue(name)
+      if (value) params.set(name, name === 'state' ? value.toUpperCase() : value)
+    }
+    return params
+  }
+
+  const syncLinks = (params: URLSearchParams) => {
+    const query = params.toString()
+    document.querySelectorAll<HTMLAnchorElement>('[data-profile-link]').forEach((link) => {
+      const path = link.dataset.profilePath
+      if (path) link.href = `${path}${query ? `?${query}` : ''}`
+    })
+    document.querySelectorAll<HTMLAnchorElement>('[data-whatsapp-link]').forEach((link) => {
+      const url = new URL(link.href)
+      url.searchParams.set('text', `${CATALOG_WHATSAPP_MESSAGE}${params.get('specialty') ?? ''}`)
+      link.href = url.href
+    })
+  }
+
+  const applyFilters = (updateUrl = true) => {
+    if (!form || cards.length === 0) return
+
+    const name = normalize(inputValue('name'))
+    const specialty = normalize(inputValue('specialty'))
+    const city = normalize(inputValue('city'))
+    const state = inputValue('state').toUpperCase()
+    const online = inputValue('online')
+    const priceMinText = inputValue('priceMin')
+    const priceMaxText = inputValue('priceMax')
+    const priceMin = parseMoney(priceMinText)
+    const priceMax = parseMoney(priceMaxText)
+    const invalidMinimum = Boolean(priceMinText) && priceMin === undefined
+    const invalidMaximum = Boolean(priceMaxText) && priceMax === undefined
+    const invalidRange = priceMin !== undefined && priceMax !== undefined && priceMin > priceMax
+    const invalidPrice = invalidMinimum || invalidMaximum || invalidRange
+
+    priceMinInput?.toggleAttribute('aria-invalid', invalidMinimum || invalidRange)
+    priceMaxInput?.toggleAttribute('aria-invalid', invalidMaximum || invalidRange)
+
+    let visibleCount = 0
+    for (const card of cards) {
+      const data = card.dataset
+      const cardMinimum = data.priceMin === '' ? undefined : Number(data.priceMin)
+      const cardMaximum = data.priceMax === '' ? undefined : Number(data.priceMax)
+      const priceFloor = cardMinimum ?? cardMaximum
+      const priceCeiling = cardMaximum ?? cardMinimum
+      const matches = !invalidPrice
+        && (!name || normalize(data.name).includes(name))
+        && (!specialty || normalize(data.specialties).split('|').some((item) => item.includes(specialty)))
+        && (!city || normalize(data.city).includes(city))
+        && (!state || data.state?.toUpperCase() === state)
+        && (!online || data.online === online)
+        && (priceMin === undefined || (priceCeiling !== undefined && priceCeiling >= priceMin))
+        && (priceMax === undefined || (priceFloor !== undefined && priceFloor <= priceMax))
+
+      card.hidden = !matches
+      if (matches) visibleCount += 1
+    }
+
+    const countLabel = `${visibleCount} ${visibleCount === 1 ? 'profissional encontrado' : 'profissionais encontrados'}`
+    if (resultsCount) resultsCount.textContent = countLabel
+    if (filterStatus) {
+      filterStatus.textContent = invalidPrice
+        ? invalidRange ? 'O valor mínimo deve ser menor que o valor máximo.' : 'Informe apenas números nos campos de valor.'
+        : countLabel
+      filterStatus.classList.toggle('filter-status-error', invalidPrice)
+    }
+    if (filterEmpty) filterEmpty.hidden = visibleCount > 0 || invalidPrice
+
+    const params = currentParams()
+    const dirty = params.size > 0
+    if (clearButton) clearButton.hidden = !dirty
+    const activeAdvanced = ['state', 'priceMin', 'priceMax'].filter((name) => inputValue(name)).length
+    if (advancedCount) {
+      advancedCount.textContent = String(activeAdvanced)
+      advancedCount.hidden = activeAdvanced === 0
+    }
+    syncLinks(params)
+
+    if (updateUrl) {
+      const url = new URL(window.location.href)
+      url.search = params.toString()
+      window.history.replaceState({}, '', url)
     }
   }
-  button?.addEventListener('click', loadMore)
-  if (sentinel && cursor && 'IntersectionObserver' in window) {
-    const observer = new IntersectionObserver(([entry]) => { if (entry?.isIntersecting) loadMore() }, { rootMargin: '240px' })
-    observer.observe(sentinel)
+
+  const clearFilters = () => {
+    if (!form) return
+    form.querySelectorAll<HTMLInputElement>('input').forEach((input) => {
+      if (input.type === 'radio') input.checked = input.value === ''
+      else input.value = ''
+      input.removeAttribute('aria-invalid')
+    })
+    if (advanced) advanced.open = false
+    applyFilters()
   }
+
+  let frame = 0
+  const scheduleFilter = () => {
+    window.cancelAnimationFrame(frame)
+    frame = window.requestAnimationFrame(() => applyFilters())
+  }
+
+  form?.addEventListener('input', scheduleFilter)
+  form?.addEventListener('change', scheduleFilter)
+  form?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    applyFilters()
+    resultsTitle?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+  })
+  clearButton?.addEventListener('click', (event) => { event.preventDefault(); clearFilters() })
+  emptyClearButton?.addEventListener('click', clearFilters)
+  stateInput?.addEventListener('input', () => { stateInput.value = stateInput.value.toUpperCase() })
+  applyFilters(false)
 </script>

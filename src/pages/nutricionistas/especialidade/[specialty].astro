@@ -1,13 +1,13 @@
 ---
 import CatalogListing from '../../../components/CatalogListing.astro'
 import { catalogApi } from '../../../lib/api-client'
-import { parseCatalogSearch, specialtySeo, toApiFilters } from '../../../lib/catalog'
+import { parseCatalogSearch, specialtySeo } from '../../../lib/catalog'
 
 const specialty = Astro.params.specialty ?? ''
 const seo = specialtySeo(specialty)
 const search = { ...parseCatalogSearch(Astro.url), specialty: seo.specialty }
 let response
 let failed = false
-try { response = await catalogApi.list(toApiFilters(search)) } catch { failed = true }
+try { response = await catalogApi.listAll(search.seed) } catch { failed = true }
 ---
 <CatalogListing search={search} seo={seo} response={response} failed={failed} />

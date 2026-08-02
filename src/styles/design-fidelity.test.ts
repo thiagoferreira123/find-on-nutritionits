@@ -17,4 +17,11 @@ describe('fidelidade ao catálogo original', () => {
     expect(card).not.toContain('card-actions')
     expect(card).not.toContain('Novo no catálogo')
   })
+
+  it('mantém os filtros no navegador sem consultar um endpoint a cada mudança', () => {
+    const listing = read('../components/CatalogListing.astro')
+    expect(listing).toContain("form?.addEventListener('input', scheduleFilter)")
+    expect(listing).toContain('card.hidden = !matches')
+    expect(listing).not.toContain('/api/nutritionists.json')
+  })
 })

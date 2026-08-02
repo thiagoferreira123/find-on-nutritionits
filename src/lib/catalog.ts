@@ -1,4 +1,4 @@
-import type { CatalogLocation } from './types'
+import type { CatalogCard, CatalogLocation } from './types'
 
 export const CATALOG_WHATSAPP_MESSAGE =
   'Olá, te conheci no site do DietSystem e estou procurando nutricionista para: '
@@ -64,6 +64,32 @@ export function toApiFilters(search: CatalogSearch) {
     seed: search.seed,
     page: search.page > 1 ? search.page : undefined,
   }
+}
+
+export function normalizeCatalogText(value: string | null | undefined): string {
+  return value?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim() ?? ''
+}
+
+export function catalogCardMatches(profile: CatalogCard, search: CatalogSearch): boolean {
+  const name = normalizeCatalogText(search.name)
+  const specialty = normalizeCatalogText(search.specialty)
+  const city = normalizeCatalogText(search.city)
+  const state = search.state?.trim().toUpperCase()
+  const minimum = search.priceMin === undefined ? undefined : Number(search.priceMin)
+  const maximum = search.priceMax === undefined ? undefined : Number(search.priceMax)
+  const profileMinimum = profile.priceMin ?? profile.priceMax
+  const profileMaximum = profile.priceMax ?? profile.priceMin
+
+  if (name && !normalizeCatalogText(profile.displayName).includes(name)) return false
+  if (specialty && !profile.specialties.some((item) => normalizeCatalogText(item).includes(specialty))) return false
+  if (city && !normalizeCatalogText(profile.city).includes(city)) return false
+  if (state && profile.state?.trim().toUpperCase() !== state) return false
+  if (search.online === 'true' && !profile.onlineService) return false
+  if (search.online === 'false' && profile.onlineService) return false
+  if (minimum !== undefined && (profileMaximum === null || profileMaximum < minimum)) return false
+  if (maximum !== undefined && (profileMinimum === null || profileMinimum > maximum)) return false
+
+  return true
 }
 
 export function searchParams(search: CatalogSearch, overrides: Partial<CatalogSearch> = {}): URLSearchParams {

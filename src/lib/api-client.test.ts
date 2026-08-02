@@ -64,4 +64,18 @@ describe('CatalogApi', () => {
       expect.any(Object),
     )
   })
+
+  it('carrega o catálogo completo sem enviar filtros de interface à API', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [{ id: '1', slug: 'ana' }], seed: 's', nextCursor: 'cursor-1' }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [{ id: '2', slug: 'bia' }], seed: 's', nextCursor: null }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const api = new CatalogApi('https://api.example.com/api')
+
+    const catalog = await api.listAll('s')
+
+    expect(catalog.items).toEqual([{ id: '1', slug: 'ana' }, { id: '2', slug: 'bia' }])
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://api.example.com/api/public/nutritionists?seed=s', expect.any(Object))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://api.example.com/api/public/nutritionists?seed=s&cursor=cursor-1', expect.any(Object))
+  })
 })

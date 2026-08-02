@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCanonicalPath,
   buildWhatsappUrl,
+  catalogCardMatches,
   catalogDisplayText,
   catalogInitials,
   formatPrice,
@@ -13,6 +14,7 @@ import {
   visibleCatalogLocations,
   youtubeEmbedUrl,
 } from './catalog'
+import type { CatalogCard } from './types'
 
 describe('parseCatalogSearch', () => {
   it('normaliza filtros públicos válidos e mantém a página compartilhável', () => {
@@ -55,6 +57,30 @@ describe('SEO de páginas indexáveis', () => {
 })
 
 describe('apresentação do catálogo', () => {
+  const profile: CatalogCard = {
+    id: '1',
+    slug: 'ana-souza',
+    displayName: 'Ana Souza',
+    crn: 'CRN-1 1234',
+    photoUrl: null,
+    specialties: ['Nutrição esportiva', 'Emagrecimento'],
+    priceMin: 150,
+    priceMax: 250,
+    onlineService: true,
+    whatsapp: null,
+    city: 'Cuiabá',
+    state: 'MT',
+    averageRating: 4.9,
+    reviewCount: 12,
+  }
+
+  it('filtra os perfis localmente com texto, modalidade e faixa de valor', () => {
+    expect(catalogCardMatches(profile, { page: 1, specialty: 'nutricao', city: 'cuiaba', online: 'true', priceMax: '180' })).toBe(true)
+    expect(catalogCardMatches(profile, { page: 1, name: 'outra pessoa' })).toBe(false)
+    expect(catalogCardMatches(profile, { page: 1, online: 'false' })).toBe(false)
+    expect(catalogCardMatches(profile, { page: 1, priceMin: '300' })).toBe(false)
+  })
+
   it('formata faixas de preço', () => {
     expect(formatPrice(150, 250)).toBe('R$\u00a0150 – R$\u00a0250')
     expect(formatPrice(150, null)).toBe('A partir de R$\u00a0150')

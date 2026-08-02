@@ -2,8 +2,8 @@
 import { buildWhatsappUrl, catalogInitials, formatPrice } from '../lib/catalog'
 import type { CatalogCard } from '../lib/types'
 
-interface Props { profile: CatalogCard; query?: string; whatsappContext?: string }
-const { profile, query = '', whatsappContext } = Astro.props
+interface Props { profile: CatalogCard; query?: string; whatsappContext?: string; visible?: boolean }
+const { profile, query = '', whatsappContext, visible = true } = Astro.props
 const price = formatPrice(profile.priceMin, profile.priceMax)
 const place = [profile.city, profile.state].filter(Boolean).join(', ')
 const visibleSpecialties = profile.specialties.slice(0, 3)
@@ -12,18 +12,30 @@ const profileHref = `/nutricionistas/${encodeURIComponent(profile.slug)}${query 
 const hasRating = profile.averageRating !== null && profile.reviewCount > 0
 const hasMetadata = hasRating || profile.onlineService || Boolean(place)
 ---
-<article class="nutri-card" data-profile-card>
+<article
+  class="nutri-card"
+  data-profile-card
+  data-name={profile.displayName}
+  data-specialties={profile.specialties.join('|')}
+  data-city={profile.city ?? ''}
+  data-state={profile.state ?? ''}
+  data-price-min={profile.priceMin ?? ''}
+  data-price-max={profile.priceMax ?? ''}
+  data-online={String(profile.onlineService)}
+  hidden={!visible}
+>
   <div class="card-top">
     {profile.photoUrl
       ? <img class="avatar" src={profile.photoUrl} alt={`Foto de ${profile.displayName}`} width="64" height="64" loading="lazy" />
       : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(profile.displayName)}</span>}
     <div class="card-content">
-      <h2 class="card-title"><a href={profileHref}>{profile.displayName}</a></h2>
-      {hasMetadata && <p class="card-meta">
-        {hasRating && <span class="rating" aria-label={`Nota média ${profile.averageRating!.toFixed(1)} de 5, ${profile.reviewCount} avaliações`}><span class="star">★</span><strong>{profile.averageRating!.toFixed(1)}</strong> ({profile.reviewCount})</span>}
-        {profile.onlineService && <span>{hasRating ? ' · ' : ''}Online</span>}
-        {place && <span>{hasRating || profile.onlineService ? ' · ' : ''}{place}</span>}
-      </p>}
+      <h2 class="card-title"><a href={profileHref} data-profile-link data-profile-path={`/nutricionistas/${encodeURIComponent(profile.slug)}`}>{profile.displayName}</a></h2>
+      {profile.crn && <p class="card-credential">{profile.crn}</p>}
+      {hasMetadata && <div class="card-meta">
+        {hasRating && <span class="rating" aria-label={`Nota média ${profile.averageRating!.toFixed(1)} de 5, ${profile.reviewCount} avaliações`}><span class="star">★</span><strong>{profile.averageRating!.toFixed(1)}</strong> <span>({profile.reviewCount})</span></span>}
+        {profile.onlineService && <span class="meta-item">Atende online</span>}
+        {place && <span class="meta-item">{place}</span>}
+      </div>}
     </div>
   </div>
 
@@ -33,9 +45,9 @@ const hasMetadata = hasRating || profile.onlineService || Boolean(place)
   </ul>}
 
   <div class="card-bottom">
-    {price && <><p class="eyebrow">Faixa por consulta</p><p class="price">{price}</p></>}
+    {price && <><p class="eyebrow">Valor da consulta</p><p class="price">{price}</p></>}
     {profile.whatsapp
-      ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
-      : <a class="btn btn-outline btn-block" href={profileHref}>Pedir contato</a>}
+      ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-whatsapp-link data-metric="whatsapp_click" data-profile-id={profile.id}>Falar no WhatsApp</a>
+      : <a class="btn btn-outline btn-block" href={profileHref} data-profile-link data-profile-path={`/nutricionistas/${encodeURIComponent(profile.slug)}`}>Ver perfil e contato</a>}
   </div>
 </article>

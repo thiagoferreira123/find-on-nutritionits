@@ -36,6 +36,37 @@ export class CatalogApi {
     }
   }
 
+  async listAll(seed?: string): Promise<CatalogListResponse> {
+    const items: CatalogListResponse['items'] = []
+    const seenIds = new Set<string>()
+    const seenCursors = new Set<string>()
+    let cursor: string | undefined
+    let stableSeed = seed
+
+    for (let requestCount = 0; requestCount < 100; requestCount += 1) {
+      const response = await this.listRequest({ seed: stableSeed, cursor })
+      stableSeed = response.seed
+
+      for (const item of response.items) {
+        const key = `${item.id}:${item.slug}`
+        if (!seenIds.has(key)) {
+          seenIds.add(key)
+          items.push(item)
+        }
+      }
+
+      if (!response.nextCursor) {
+        return { items, seed: stableSeed, nextCursor: null }
+      }
+      if (seenCursors.has(response.nextCursor)) throw new CatalogApiError(503)
+
+      seenCursors.add(response.nextCursor)
+      cursor = response.nextCursor
+    }
+
+    throw new CatalogApiError(503)
+  }
+
   private listRequest(filters: CatalogListFilters): Promise<CatalogListResponse> {
     const params = new URLSearchParams()
     for (const [key, value] of Object.entries(filters)) {

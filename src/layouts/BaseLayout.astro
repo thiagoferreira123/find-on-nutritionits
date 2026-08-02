@@ -60,20 +60,21 @@ const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://my.dietsystem.com.br'
     {structuredData && <script is:inline type="application/ld+json" set:html={serializeJsonLd(structuredData)} />}
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Ir para o conteúdo</a>
     <header class="site-header">
       <div class="container header-inner">
         <a class="brand" href="/nutricionistas" aria-label="DietSystem — catálogo de nutricionistas">
           <img src="/img/logo.png" alt="" width="32" height="32" />
-          <span>DietSystem</span>
+          <span class="brand-copy"><span>DietSystem</span><small>Encontre um Nutri</small></span>
         </a>
         <nav class="header-nav" aria-label="Navegação principal">
-          <a class="btn btn-primary btn-sm questions-link" href="/duvidas">Pergunte ao especialista</a>
-          <a class="btn btn-outline btn-sm" href={`${appUrl}/login`}>Sou nutricionista</a>
+          <a class="header-link questions-link" href="/duvidas">Pergunte ao especialista</a>
+          <a class="btn btn-outline btn-sm" href={`${appUrl}/login`}><span class="desktop-label">Sou nutricionista</span><span class="mobile-label">Área profissional</span></a>
         </nav>
       </div>
     </header>
 
-    <div class="page-main"><slot /></div>
+    <div id="main-content" class="page-main"><slot /></div>
 
     <footer class="site-footer">
       <div class="container footer-inner">

@@ -1,46 +1,78 @@
 ---
 import type { CatalogSearch } from '../lib/catalog'
-interface Props { search: CatalogSearch }
-const { search } = Astro.props
+
+interface Props {
+  search: CatalogSearch
+  specialties?: string[]
+  cities?: string[]
+  states?: string[]
+}
+
+const { search, specialties = [], cities = [], states = [] } = Astro.props
 const dirty = Boolean(search.name || search.specialty || search.city || search.state || search.priceMin || search.priceMax || search.online)
+const advancedCount = [search.state, search.priceMin, search.priceMax].filter(Boolean).length
 ---
-<form class="filters" method="get" action={Astro.url.pathname} data-catalog-filters>
-  {search.seed && <input type="hidden" name="seed" value={search.seed} />}
+<form id="catalog-filters" class="filters" method="get" action={Astro.url.pathname} data-catalog-filters>
+  <div class="filters-heading">
+    <div>
+      <h2>Filtre os profissionais</h2>
+      <p>Os resultados são atualizados nesta página, sem recarregar.</p>
+    </div>
+    <a class="clear-button" href={Astro.url.pathname} data-clear-filters hidden={!dirty}>Limpar tudo</a>
+  </div>
+
   <div class="filter-main">
-    <input class="field" aria-label="Nome" name="name" value={search.name} maxlength="100" placeholder="Buscar por nome" />
-    <input class="field" aria-label="Especialidade" name="specialty" value={search.specialty} maxlength="100" placeholder="Especialidade" />
-    <input class="field" aria-label="Cidade" name="city" value={search.city} maxlength="64" placeholder="Cidade" />
-    <details class="advanced" open={Boolean(search.state || search.priceMin || search.priceMax)}>
-      <summary class="btn btn-outline">Mais filtros</summary>
+    <label class="filter-field filter-name">
+      <span class="filter-label">Nome do profissional</span>
+      <input class="field" name="name" value={search.name} maxlength="100" autocomplete="off" placeholder="Ex.: Ana Souza" />
+    </label>
+    <label class="filter-field">
+      <span class="filter-label">Especialidade</span>
+      <input class="field" name="specialty" value={search.specialty} maxlength="100" autocomplete="off" list="catalog-specialties" placeholder="Ex.: Nutrição esportiva" />
+      <datalist id="catalog-specialties">{specialties.map((specialty) => <option value={specialty} />)}</datalist>
+    </label>
+    <label class="filter-field">
+      <span class="filter-label">Cidade</span>
+      <input class="field" name="city" value={search.city} maxlength="64" autocomplete="address-level2" list="catalog-cities" placeholder="Ex.: Cuiabá" />
+      <datalist id="catalog-cities">{cities.map((city) => <option value={city} />)}</datalist>
+    </label>
+  </div>
+
+  <div class="filter-controls">
+    <fieldset class="modality-filter">
+      <legend>Modalidade</legend>
+      <div class="segments">
+        <label class="segment"><input type="radio" name="online" value="" checked={!search.online} /><span>Qualquer</span></label>
+        <label class="segment"><input type="radio" name="online" value="true" checked={search.online === 'true'} /><span>Online</span></label>
+        <label class="segment"><input type="radio" name="online" value="false" checked={search.online === 'false'} /><span>Presencial</span></label>
+      </div>
+    </fieldset>
+
+    <details class="advanced" open={advancedCount > 0}>
+      <summary>
+        <span>Mais filtros</span>
+        <span class="advanced-count" data-advanced-count hidden={advancedCount === 0}>{advancedCount}</span>
+      </summary>
+      <div class="advanced-fields">
+        <label class="filter-field">
+          <span class="filter-label">Estado</span>
+          <input class="field" name="state" value={search.state} maxlength="2" autocomplete="address-level1" list="catalog-states" placeholder="UF" />
+          <datalist id="catalog-states">{states.map((state) => <option value={state} />)}</datalist>
+        </label>
+        <label class="filter-field">
+          <span class="filter-label">Valor mínimo</span>
+          <input class="field" name="priceMin" value={search.priceMin} inputmode="decimal" pattern="[0-9]+([,.][0-9]+)?" placeholder="R$ 0" />
+        </label>
+        <label class="filter-field">
+          <span class="filter-label">Valor máximo</span>
+          <input class="field" name="priceMax" value={search.priceMax} inputmode="decimal" pattern="[0-9]+([,.][0-9]+)?" placeholder="R$ 500" />
+        </label>
+      </div>
     </details>
   </div>
 
-  <div class="filter-row">
-    <div class="segments" role="group" aria-label="Modalidade de atendimento">
-      <label class="segment"><input type="radio" name="online" value="" checked={!search.online} />Todos</label>
-      <label class="segment"><input type="radio" name="online" value="true" checked={search.online === 'true'} />Online</label>
-      <label class="segment"><input type="radio" name="online" value="false" checked={search.online === 'false'} />Presencial</label>
-    </div>
-    <button class="btn btn-primary btn-sm" type="submit">Buscar</button>
-    {dirty && <a class="clear-button" href={Astro.url.pathname}>Limpar filtros</a>}
-  </div>
-
-  <div class="advanced-fields" data-advanced-fields hidden={!Boolean(search.state || search.priceMin || search.priceMax)}>
-    <input class="field" aria-label="Estado" name="state" value={search.state} maxlength="2" placeholder="UF" />
-    <input class="field" aria-label="Preço mínimo" name="priceMin" value={search.priceMin} inputmode="decimal" placeholder="Preço mínimo" />
-    <input class="field" aria-label="Preço máximo" name="priceMax" value={search.priceMax} inputmode="decimal" placeholder="Preço máximo" />
+  <div class="filter-footer">
+    <p class="filter-status" aria-live="polite" data-filter-status>Use os campos para refinar a lista.</p>
+    <button class="btn btn-primary filter-submit" type="submit">Ver resultados</button>
   </div>
 </form>
-
-<script>
-  const form = document.querySelector<HTMLFormElement>('[data-catalog-filters]')
-  const details = form?.querySelector<HTMLDetailsElement>('details.advanced')
-  const advanced = form?.querySelector<HTMLElement>('[data-advanced-fields]')
-  if (details && advanced) {
-    const sync = () => { advanced.hidden = !details.open }
-    details.addEventListener('toggle', sync)
-    sync()
-  }
-  const state = form?.querySelector<HTMLInputElement>('input[name="state"]')
-  state?.addEventListener('input', () => { state.value = state.value.toUpperCase() })
-</script>
