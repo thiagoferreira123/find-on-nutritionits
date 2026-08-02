@@ -1,0 +1,18 @@
+---
+import CatalogListing from '../../components/CatalogListing.astro'
+import { catalogApi } from '../../lib/api-client'
+import { parseCatalogSearch, toApiFilters } from '../../lib/catalog'
+
+const search = parseCatalogSearch(Astro.url)
+const seo = {
+  title: 'Busque pelo nutricionista ideal para você',
+  heading: 'Encontre um nutricionista de confiança',
+  description: 'Encontre nutricionistas para atendimento online ou presencial, compare especialidades, avaliações e formas de acompanhamento.',
+  intro: 'Profissionais para acompanhamento online ou presencial, com credenciais e avaliações de quem já foi atendido.',
+  canonicalPath: '/nutricionistas',
+}
+let response
+let failed = false
+try { response = await catalogApi.list(toApiFilters(search)) } catch { failed = true }
+---
+<CatalogListing search={search} seo={seo} response={response} failed={failed} />

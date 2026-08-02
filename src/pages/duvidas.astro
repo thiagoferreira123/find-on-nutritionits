@@ -1,0 +1,70 @@
+---
+import AsyncFormScript from '../components/AsyncFormScript.astro'
+import Captcha from '../components/Captcha.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { catalogApi } from '../lib/api-client'
+import { catalogInitials } from '../lib/catalog'
+
+const parsedPage = Number(Astro.url.searchParams.get('page'))
+const page = Number.isInteger(parsedPage) && parsedPage >= 1 && parsedPage <= 1000 ? parsedPage : 1
+let response
+let failed = false
+try { response = await catalogApi.questions(page) } catch { failed = true }
+const items = response?.items ?? []
+---
+<BaseLayout
+  title="Pergunte ao especialista | DietSystem"
+  description="Pergunte ao especialista: dúvidas de nutrição respondidas por nutricionistas do DietSystem."
+  canonicalPath={page > 1 ? `/duvidas?page=${page}` : '/duvidas'}
+  previousPath={page > 1 ? `/duvidas${page > 2 ? `?page=${page - 1}` : ''}` : undefined}
+  nextPath={response?.nextPage ? `/duvidas?page=${response.nextPage}` : undefined}
+>
+  <main class="container content-main">
+    <a class="back-link" href="/nutricionistas">← Voltar ao catálogo</a>
+    <header class="questions-header">
+      <h1>Pergunte ao especialista</h1>
+      <p>Sua pergunta é respondida por nutricionistas do catálogo. São orientações gerais e não substituem uma consulta.</p>
+    </header>
+
+    <div class="questions-grid">
+      <section class="question-list" aria-label="Dúvidas publicadas">
+        {failed && <div class="error-state"><h2>Não foi possível carregar as dúvidas</h2><a class="btn btn-outline btn-sm" style="margin-top:1rem" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a></div>}
+        {!failed && items.length === 0 && <div class="empty-state"><h2>Ainda não há perguntas publicadas</h2><p>Envie a primeira — a resposta fica pública para ajudar outras pessoas.</p></div>}
+        {items.map((question) => <article class="question">
+          <p class="asked">{question.visitorName} perguntou</p>
+          <h2>{question.title}</h2>
+          <p class="body">{question.content}</p>
+          {question.answers.length > 0 ? <div class="answers">{question.answers.map((answer) => <div class="answer">
+            {answer.professionalPhotoUrl
+              ? <img class="avatar" src={answer.professionalPhotoUrl} alt={`Foto de ${answer.professionalName}`} width="36" height="36" loading="lazy" />
+              : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(answer.professionalName)}</span>}
+            <div>
+              <a class="answer-name" href={`/nutricionistas/${answer.professionalSlug}`}>{answer.professionalName}</a>
+              <span class="soft" style="display:block;font-size:.75rem">Nutricionista</span>
+              <p>{answer.content}</p>
+            </div>
+          </div>)}</div> : <p class="soft" style="margin:1rem 0 0;padding-top:1rem;border-top:1px solid #e5e5e5;font-size:.78125rem">Aguardando resposta de um nutricionista.</p>}
+        </article>)}
+
+        {(page > 1 || response?.nextPage) && <nav class="pagination" aria-label="Paginação das dúvidas">
+          {page > 1 && <a class="btn btn-outline btn-sm" rel="prev" href={page === 2 ? '/duvidas' : `/duvidas?page=${page - 1}`}>Página anterior</a>}
+          <span class="muted" style="font-size:.78125rem">Página {page}</span>
+          {response?.nextPage && <a class="btn btn-outline btn-sm" rel="next" href={`/duvidas?page=${response.nextPage}`}>Próxima página</a>}
+        </nav>}
+      </section>
+
+      <form class="question-form" method="post" action="/api/questions" data-async-form data-success-message="Dúvida publicada e enviada aos nutricionistas.">
+        <div><h2>Envie sua dúvida</h2><p class="hint">Ela será publicada e compartilhada com os nutricionistas.</p></div>
+        <input class="field" aria-label="Seu nome" name="visitorName" minlength="2" maxlength="155" placeholder="Seu nome" required />
+        <input class="field" aria-label="Seu e-mail" name="visitorEmail" maxlength="256" type="email" placeholder="Seu e-mail (opcional)" />
+        <input class="field" aria-label="Título da dúvida" name="title" minlength="5" maxlength="180" placeholder="Título da dúvida" required />
+        <textarea class="textarea" aria-label="Detalhes da dúvida" name="content" minlength="10" maxlength="2000" placeholder="Conte um pouco mais…" required></textarea>
+        <label class="consent"><input type="checkbox" required /><span>Entendo que minha pergunta e meu nome serão publicados para receber respostas.</span></label>
+        <Captcha />
+        <p class="form-status" data-form-status aria-live="polite"></p>
+        <button class="btn btn-primary btn-block" type="submit">Enviar dúvida</button>
+      </form>
+    </div>
+  </main>
+  <AsyncFormScript />
+</BaseLayout>

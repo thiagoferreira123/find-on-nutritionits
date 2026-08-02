@@ -1,0 +1,20 @@
+---
+interface Props { title?: string; description?: string }
+const {
+  title = 'Encontre um nutricionista de confiança',
+  description = 'Profissionais verificados para acompanhamento online ou presencial, com avaliações de quem já foi atendido.',
+} = Astro.props
+---
+<section class="hero">
+  <img class="hero-image" src="/img/catalog-hero.webp" alt="Nutricionista recebendo uma paciente no consultório" width="1536" height="1024" fetchpriority="high" decoding="async" />
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <h1>{title}</h1>
+      <p>{description}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/duvidas">Pergunte ao especialista</a>
+        <p class="hero-note">Sem custo — respondido por nutricionistas do catálogo.</p>
+      </div>
+    </div>
+  </div>
+</section>

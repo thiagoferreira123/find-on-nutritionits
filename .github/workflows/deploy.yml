@@ -1,0 +1,39 @@
+name: Validate and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+    steps:
+      - name: Trigger Coolify deployment
+        if: env.COOLIFY_WEBHOOK != '' && env.COOLIFY_TOKEN != ''
+        shell: bash
+        run: >-
+          curl --fail-with-body --silent --show-error
+          --request GET "$COOLIFY_WEBHOOK"
+          --header "Authorization: Bearer $COOLIFY_TOKEN"

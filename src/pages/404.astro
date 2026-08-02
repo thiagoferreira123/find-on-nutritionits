@@ -1,0 +1,7 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+Astro.response.status = 404
+---
+<BaseLayout title="Página não encontrada | Encontre um Nutri" description="A página solicitada não foi encontrada." canonicalPath={Astro.url.pathname} noIndex={true}>
+  <main class="container content-main"><div class="empty-state" style="max-width:36rem;margin:4rem auto"><h1 style="font-size:1.375rem">Página não encontrada</h1><p>O endereço informado não existe ou foi movido.</p><a class="btn btn-primary" style="margin-top:1rem" href="/nutricionistas">Ver o catálogo</a></div></main>
+</BaseLayout>

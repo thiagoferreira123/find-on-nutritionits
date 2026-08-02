@@ -1,0 +1,198 @@
+---
+import CatalogFilters from './CatalogFilters.astro'
+import CatalogHero from './CatalogHero.astro'
+import MetricScript from './MetricScript.astro'
+import NutritionistCard from './NutritionistCard.astro'
+import BaseLayout from '../layouts/BaseLayout.astro'
+import { buildCanonicalPath, searchParams, type CatalogSearch, type CatalogSeoCopy } from '../lib/catalog'
+import type { CatalogListResponse } from '../lib/types'
+
+interface Props {
+  search: CatalogSearch
+  seo: CatalogSeoCopy
+  response?: CatalogListResponse
+  failed?: boolean
+}
+const { search, seo, response, failed = false } = Astro.props
+const canonicalPath = buildCanonicalPath(seo.canonicalPath, search.page)
+const profileQuery = searchParams(search).toString()
+const nextQuery = searchParams(search, { page: search.page + 1 }).toString()
+const previousQuery = searchParams(search, { page: search.page - 1 }).toString()
+const nextPath = response?.nextCursor ? `${seo.canonicalPath}${nextQuery ? `?${nextQuery}` : ''}` : undefined
+const previousPath = search.page > 1 ? `${seo.canonicalPath}${previousQuery ? `?${previousQuery}` : ''}` : undefined
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: seo.heading,
+  description: seo.description,
+  numberOfItems: response?.items.length ?? 0,
+  itemListElement: response?.items.map((profile, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    url: new URL(`/nutricionistas/${profile.slug}`, Astro.site ?? Astro.url).href,
+    name: profile.displayName,
+  })) ?? [],
+}
+const apiFilters = {
+  name: search.name,
+  specialty: search.specialty,
+  city: search.city,
+  state: search.state,
+  priceMin: search.priceMin,
+  priceMax: search.priceMax,
+  online: search.online,
+  seed: response?.seed ?? search.seed,
+  page: search.page,
+}
+---
+<BaseLayout
+  title={seo.title}
+  description={seo.description}
+  canonicalPath={canonicalPath}
+  previousPath={previousPath}
+  nextPath={nextPath}
+  structuredData={structuredData}
+>
+  <main>
+    <CatalogHero title={seo.heading} description={seo.intro} />
+    <section class="container listing" aria-labelledby="catalog-results-title">
+      <CatalogFilters search={{ ...search, seed: response?.seed ?? search.seed }} />
+      <div class="results-head">
+        <h2 id="catalog-results-title">Nutricionistas disponíveis</h2>
+        {response && <p>{response.items.length} {response.items.length === 1 ? 'perfil nesta página' : 'perfis nesta página'}</p>}
+      </div>
+
+      {failed && <div class="error-state" role="alert">
+        <h2>Não foi possível carregar os profissionais</h2>
+        <p>Verifique sua conexão e tente de novo.</p>
+        <a class="btn btn-outline btn-sm" style="margin-top:1rem" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a>
+      </div>}
+
+      {!failed && response?.items.length === 0 && <div class="empty-state">
+        <h2>Nenhum perfil encontrado</h2>
+        <p>Tente ampliar a região, remover um filtro ou buscar por outra especialidade.</p>
+      </div>}
+
+      {!failed && response && response.items.length > 0 && <>
+        <div class="card-grid" data-catalog-grid>
+          {response.items.map((profile) => <NutritionistCard profile={profile} query={profileQuery} whatsappContext={search.specialty} />)}
+        </div>
+
+        {(search.page > 1 || response.nextCursor) && <nav class="pagination" aria-label="Paginação do catálogo">
+          {search.page > 1 && <a class="page-link" rel="prev" href={`${Astro.url.pathname}${previousQuery ? `?${previousQuery}` : ''}`}>{search.page - 1}</a>}
+          <span class="page-link page-current" aria-current="page">{search.page}</span>
+          {response.nextCursor && <a class="page-link" rel="next" href={`${Astro.url.pathname}${nextQuery ? `?${nextQuery}` : ''}`}>{search.page + 1}</a>}
+        </nav>}
+
+        <div class="list-sentinel" data-list-sentinel data-next-cursor={response.nextCursor ?? ''}>
+          {response.nextCursor ? <button class="btn btn-outline btn-sm" type="button" data-load-more>Carregar mais profissionais</button> : 'Fim da lista'}
+        </div>
+      </>}
+    </section>
+  </main>
+  <MetricScript eventType="page_view" />
+</BaseLayout>
+
+<script is:inline define:vars={{ apiFilters, profileQuery }}>
+  const grid = document.querySelector('[data-catalog-grid]')
+  const sentinel = document.querySelector('[data-list-sentinel]')
+  const button = document.querySelector('[data-load-more]')
+  let cursor = sentinel?.getAttribute('data-next-cursor') || ''
+  let loading = false
+
+  const initials = (name) => name.split(/\s+/).map((part) => part.match(/[\p{L}\p{N}]/u)?.[0] || '').filter(Boolean).slice(0, 2).join('').toUpperCase()
+  const money = (value) => `R$\u00a0${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`
+  const price = (min, max) => min !== null && max !== null ? `${money(min)} – ${money(max)}` : min !== null ? `A partir de ${money(min)}` : max !== null ? `Até ${money(max)}` : ''
+  const whatsapp = (phone, context) => {
+    const digits = String(phone).replace(/\D/g, '')
+    const number = digits.startsWith('55') ? digits : `55${digits}`
+    const message = `Olá, te conheci no site do DietSystem e estou procurando nutricionista para: ${context || ''}`
+    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+  }
+  const element = (tag, className, text) => {
+    const node = document.createElement(tag)
+    if (className) node.className = className
+    if (text !== undefined) node.textContent = text
+    return node
+  }
+
+  const renderCard = (profile) => {
+    const article = element('article', 'nutri-card')
+    const top = element('div', 'card-top')
+    if (profile.photoUrl) {
+      const image = element('img', 'avatar')
+      image.src = profile.photoUrl
+      image.alt = `Foto de ${profile.displayName}`
+      image.loading = 'lazy'
+      top.append(image)
+    } else {
+      top.append(element('span', 'avatar avatar-fallback', initials(profile.displayName)))
+    }
+    const content = element('div', 'card-content')
+    const heading = element('h2', 'card-title')
+    const link = element('a', '', profile.displayName)
+    link.href = `/nutricionistas/${encodeURIComponent(profile.slug)}${profileQuery ? `?${profileQuery}` : ''}`
+    heading.append(link)
+    content.append(heading)
+    const meta = element('p', 'card-meta')
+    const rating = profile.averageRating !== null && profile.reviewCount > 0
+      ? `★ ${Number(profile.averageRating).toFixed(1)} (${profile.reviewCount})`
+      : 'Novo no catálogo'
+    const place = [profile.city, profile.state].filter(Boolean).join(', ')
+    meta.textContent = `${rating}${profile.onlineService ? ' · Online' : ''}${place ? ` · ${place}` : ''}`
+    content.append(meta)
+    top.append(content)
+    article.append(top)
+    if (profile.specialties.length) {
+      const chips = element('ul', 'chips')
+      profile.specialties.slice(0, 3).forEach((name) => chips.append(element('li', 'chip', name)))
+      if (profile.specialties.length > 3) chips.append(element('li', 'chip chip-more', `+${profile.specialties.length - 3}`))
+      article.append(chips)
+    }
+    const bottom = element('div', 'card-bottom')
+    const formatted = price(profile.priceMin, profile.priceMax)
+    if (formatted) {
+      bottom.append(element('p', 'eyebrow', 'Faixa por consulta'))
+      bottom.append(element('p', 'price', formatted))
+    }
+    const action = element('a', `btn ${profile.whatsapp ? 'btn-primary' : 'btn-outline'} btn-block`, profile.whatsapp ? 'WhatsApp' : 'Pedir contato')
+    action.href = profile.whatsapp ? whatsapp(profile.whatsapp, apiFilters.specialty) : link.href
+    if (profile.whatsapp) {
+      action.target = '_blank'
+      action.rel = 'noreferrer'
+      action.dataset.metric = 'whatsapp_click'
+      action.dataset.profileId = profile.id
+    }
+    bottom.append(action)
+    article.append(bottom)
+    return article
+  }
+
+  const loadMore = async () => {
+    if (!cursor || loading || !grid || !sentinel) return
+    loading = true
+    if (button) { button.disabled = true; button.textContent = 'Carregando…' }
+    try {
+      const params = new URLSearchParams()
+      Object.entries(apiFilters).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)) })
+      params.set('cursor', cursor)
+      const response = await fetch(`/api/nutritionists.json?${params}`)
+      if (!response.ok) throw new Error('request_failed')
+      const data = await response.json()
+      data.items.forEach((profile) => grid.append(renderCard(profile)))
+      cursor = data.nextCursor || ''
+      sentinel.setAttribute('data-next-cursor', cursor)
+      if (!cursor) sentinel.textContent = 'Fim da lista'
+    } catch {
+      if (button) button.textContent = 'Tentar carregar novamente'
+    } finally {
+      loading = false
+      if (button && cursor) { button.disabled = false; button.textContent = 'Carregar mais profissionais' }
+    }
+  }
+  button?.addEventListener('click', loadMore)
+  if (sentinel && cursor && 'IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(([entry]) => { if (entry?.isIntersecting) loadMore() }, { rootMargin: '240px' })
+    observer.observe(sentinel)
+  }
+</script>

@@ -1,0 +1,175 @@
+---
+import AsyncFormScript from '../../components/AsyncFormScript.astro'
+import Captcha from '../../components/Captcha.astro'
+import MetricScript from '../../components/MetricScript.astro'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { CatalogApiError, catalogApi } from '../../lib/api-client'
+import {
+  buildWhatsappUrl,
+  catalogInitials,
+  formatPrice,
+  formatReviewDate,
+  instagramUrl,
+  safeExternalUrl,
+  youtubeEmbedUrl,
+} from '../../lib/catalog'
+
+const slug = Astro.params.slug ?? ''
+let profile
+let status = 200
+try {
+  profile = await catalogApi.profile(slug)
+} catch (error) {
+  status = error instanceof CatalogApiError && error.status === 404 ? 404 : 503
+  Astro.response.status = status
+}
+
+const description = profile?.bio?.slice(0, 155) || (profile ? `Conheça ${profile.displayName}, nutricionista no catálogo DietSystem.` : 'Perfil de nutricionista não encontrado.')
+const title = profile ? `${profile.displayName} | Nutricionista` : status === 404 ? 'Perfil não encontrado | DietSystem' : 'Perfil temporariamente indisponível | DietSystem'
+const profileId = profile?.id === null || profile?.id === undefined ? undefined : Number(profile.id)
+const place = profile?.locations.map((location) => [location.city, location.state].filter(Boolean).join(', ')).find(Boolean)
+const schedule = profile?.locations.find((location) => location.publicScheduleEnabled && location.publicScheduleUrl)
+const hasDirectContact = Boolean(profile?.whatsapp || schedule?.publicScheduleUrl)
+const price = profile ? formatPrice(profile.priceMin, profile.priceMax) : null
+const averageRating = profile?.reviews.length ? profile.reviews.reduce((sum, review) => sum + review.rating, 0) / profile.reviews.length : null
+const instagram = profile ? instagramUrl(profile.instagram) : null
+const website = profile ? safeExternalUrl(profile.website) : null
+const linkedin = profile ? safeExternalUrl(profile.linkedin) : null
+const youtube = profile ? safeExternalUrl(profile.youtube) : null
+const youtubeEmbed = profile ? youtubeEmbedUrl(profile.youtube) : null
+const structuredData = profile ? {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: profile.displayName,
+  description: profile.bio ?? undefined,
+  image: profile.photoUrl ?? undefined,
+  url: new URL(`/nutricionistas/${profile.slug}`, Astro.site ?? Astro.url).href,
+  jobTitle: 'Nutricionista',
+  identifier: profile.crn ? { '@type': 'PropertyValue', propertyID: 'CRN', value: profile.crn } : undefined,
+  aggregateRating: profile.reviews.length >= 3 ? {
+    '@type': 'AggregateRating',
+    ratingValue: averageRating,
+    reviewCount: profile.reviews.length,
+  } : undefined,
+  workLocation: profile.locations.map((location) => ({
+    '@type': 'LocalBusiness',
+    name: location.name,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: location.address ?? undefined,
+      addressLocality: location.city ?? undefined,
+      addressRegion: location.state ?? undefined,
+    },
+  })),
+} : undefined
+---
+<BaseLayout
+  title={title}
+  description={description}
+  canonicalPath={`/nutricionistas/${slug}`}
+  imagePath={profile ? `/api/og-image/${profile.slug}.png` : undefined}
+  type={profile ? 'profile' : 'website'}
+  noIndex={!profile}
+  structuredData={structuredData}
+>
+  {profile ? <main class="container content-main">
+    <a class="back-link" href={`/nutricionistas${Astro.url.search}`}>← Voltar ao catálogo</a>
+
+    <section class="profile-hero">
+      <div class="profile-head">
+        {profile.photoUrl
+          ? <img class="profile-avatar" src={profile.photoUrl} alt={`Foto de ${profile.displayName}`} width="128" height="128" />
+          : <span class="profile-avatar avatar-fallback" aria-hidden="true">{catalogInitials(profile.displayName)}</span>}
+        <div>
+          <h1 class="profile-name">{profile.displayName}</h1>
+          {profile.crn && <p class="profile-crn">{profile.crn}</p>}
+          <p class="profile-meta">{['Nutricionista', place, profile.onlineService ? 'Atende online' : null].filter(Boolean).join(' · ')}</p>
+          {profile.specialties.length > 0 && <ul class="chips">{profile.specialties.map((specialty) => <li class="chip">{specialty}</li>)}</ul>}
+          <div class="profile-actions">
+            {profile.whatsapp && <a class="btn btn-primary" href={buildWhatsappUrl(profile.whatsapp, Astro.url.searchParams.get('specialty') ?? undefined)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>Conversar no WhatsApp</a>}
+            {schedule?.publicScheduleUrl && <a class="btn btn-outline" href={schedule.publicScheduleUrl} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agendar consulta</a>}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {!hasDirectContact && Number.isInteger(profileId) && profileId! > 0 && <section class="lead-panel" aria-labelledby="lead-title">
+      <h2 id="lead-title">Peça para {profile.displayName} entrar em contato</h2>
+      <p>Informe como podemos ajudar. Seus dados serão enviados somente ao nutricionista deste perfil.</p>
+      <form class="form-grid" method="post" action="/api/leads" data-async-form data-success-message="Pedido enviado. O nutricionista recebeu seus dados para entrar em contato.">
+        <input type="hidden" name="catalogProfileId" value={profileId} />
+        <label class="form-label">Nome<input class="field" name="name" minlength="2" maxlength="155" autocomplete="name" required /></label>
+        <label class="form-label">E-mail<input class="field" name="email" type="email" maxlength="254" autocomplete="email" required /></label>
+        <label class="form-label">Telefone<input class="field" name="phone" type="tel" minlength="8" maxlength="32" autocomplete="tel" required /></label>
+        <label class="form-label wide">Objetivo<textarea class="textarea" name="objective" minlength="2" maxlength="500" required></textarea></label>
+        <label class="consent wide"><input type="checkbox" required /><span>Autorizo o envio destes dados ao nutricionista para responder ao meu pedido de contato.</span></label>
+        <div class="wide"><Captcha /></div>
+        <p class="form-status wide" data-form-status aria-live="polite"></p>
+        <div class="wide"><button class="btn btn-primary" type="submit">Pedir contato</button></div>
+      </form>
+    </section>}
+
+    <div class="profile-grid">
+      <div class="profile-stack">
+        {(profile.bio || profile.followupTypes.length > 0) && <section class="panel">
+          <h2>Sobre o acompanhamento</h2>
+          {profile.bio && <p class="bio">{profile.bio}</p>}
+          {profile.followupTypes.length > 0 && <div class="section-separator">
+            <h3>Formatos de acompanhamento</h3>
+            <ul class="chips">{profile.followupTypes.map((type) => <li class="chip">{type}</li>)}</ul>
+          </div>}
+          {youtubeEmbed && <iframe class="video-frame" src={youtubeEmbed} title={`Vídeo de apresentação de ${profile.displayName}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>}
+        </section>}
+
+        {profile.locations.length > 0 && <section class="panel">
+          <h2>Onde atende</h2>
+          <div class="location-grid">{profile.locations.map((location) => <article class="location">
+            <h3>{location.name}</h3>
+            {(location.city || location.state) && <p>{[location.city, location.state].filter(Boolean).join(', ')}</p>}
+            {location.address && <p>{location.address}</p>}
+            {location.publicScheduleEnabled && location.publicScheduleUrl && <a class="btn btn-outline btn-sm btn-block" style="margin-top:.75rem" href={location.publicScheduleUrl} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agenda online</a>}
+          </article>)}</div>
+        </section>}
+
+        {profile.reviews.length > 0 && <section class="panel">
+          <h2>Avaliações de pacientes</h2>
+          {averageRating !== null && <div class="review-summary" aria-label={`Nota média ${averageRating.toFixed(1)} de 5`}><span class="star">★★★★★</span><strong>{averageRating.toFixed(1)}</strong><span class="muted">{profile.reviews.length} {profile.reviews.length === 1 ? 'avaliação' : 'avaliações'}</span></div>}
+          <div class="review-list">{profile.reviews.map((review) => <article class="review">
+            <span class="star" aria-label={`Nota ${review.rating} de 5`}>{'★★★★★'.slice(0, review.rating)}<span style="color:#e5e5e5">{'★★★★★'.slice(review.rating)}</span></span>
+            {review.comment && <blockquote>{review.comment}</blockquote>}
+            <footer>{review.patientName} <time datetime={review.createdAt}>{formatReviewDate(review.createdAt)}</time></footer>
+          </article>)}</div>
+        </section>}
+
+        {profile.contributions.length > 0 && <section class="panel">
+          <h2>Perguntas que já respondeu</h2>
+          <div class="contribution-list">{profile.contributions.map((item) => <article class="contribution"><h3>{item.questionTitle}</h3><p class="bio">{item.content}</p></article>)}</div>
+          <a class="text-link" href="/duvidas">Pergunte ao especialista</a>
+        </section>}
+      </div>
+
+      <aside class="sidebar" aria-label="Informações de contato e atendimento">
+        {(price || profile.paymentMethods.length > 0 || profile.onlineService) && <section class="facts">
+          {price && <div class="fact"><p class="fact-label">Investimento</p><p class="fact-value">{price}</p><p class="soft" style="margin:.25rem 0 0;font-size:.75rem">por consulta</p></div>}
+          {profile.paymentMethods.length > 0 && <div class="fact"><p class="fact-label">Formas de pagamento</p><ul class="chips">{profile.paymentMethods.map((method) => <li class="chip">{method}</li>)}</ul></div>}
+          {profile.onlineService && <div class="fact"><p class="fact-label">Atendimento</p><p style="margin:.25rem 0 0;font-size:.84375rem">Online disponível</p></div>}
+        </section>}
+        {profile.whatsapp && <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, Astro.url.searchParams.get('specialty') ?? undefined)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>Falar no WhatsApp</a>}
+        {(instagram || website || linkedin || youtube) && <nav class="social-links" aria-label="Links do nutricionista">
+          {instagram && <a href={instagram} target="_blank" rel="noreferrer">Instagram</a>}
+          {website && <a href={website} target="_blank" rel="noreferrer">Site</a>}
+          {linkedin && <a href={linkedin} target="_blank" rel="noreferrer">LinkedIn</a>}
+          {youtube && <a href={youtube} target="_blank" rel="noreferrer">YouTube</a>}
+        </nav>}
+      </aside>
+    </div>
+  </main> : <main class="container content-main">
+    <div class="empty-state" style="max-width:36rem;margin:4rem auto">
+      <h1 style="font-size:1.375rem">{status === 404 ? 'Perfil não encontrado' : 'Perfil temporariamente indisponível'}</h1>
+      <p>{status === 404 ? 'O perfil informado não existe ou não está disponível.' : 'Não foi possível carregar este perfil agora. Tente novamente em instantes.'}</p>
+      <a class="btn btn-primary" style="margin-top:1rem" href="/nutricionistas">Ver o catálogo</a>
+    </div>
+  </main>}
+  {profile && <MetricScript eventType="profile_view" catalogProfileId={profileId} />}
+  {profile && <AsyncFormScript />}
+</BaseLayout>

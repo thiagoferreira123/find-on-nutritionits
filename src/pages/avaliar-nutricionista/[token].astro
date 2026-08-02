@@ -1,0 +1,81 @@
+---
+import AsyncFormScript from '../../components/AsyncFormScript.astro'
+import Captcha from '../../components/Captcha.astro'
+import MetricScript from '../../components/MetricScript.astro'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { catalogApi } from '../../lib/api-client'
+import { catalogInitials } from '../../lib/catalog'
+
+const token = Astro.params.token ?? ''
+let linkProfile
+try { linkProfile = await catalogApi.reviewLink(token) } catch { /* O backend valida novamente no envio. */ }
+---
+<BaseLayout
+  title="Avaliar nutricionista | DietSystem"
+  description="Compartilhe sua experiência com seu nutricionista."
+  canonicalPath={`/avaliar-nutricionista/${token}`}
+  noIndex={true}
+>
+  <main class="review-wrap">
+    <form class="review-form" method="post" action={`/api/reviews/${encodeURIComponent(token)}`} data-async-form data-error-message="Este link pode ser inválido ou já ter sido utilizado.">
+      <div data-form-content>
+        <h1>Avalie seu nutricionista</h1>
+        <p class="intro">Seu depoimento ajuda outras pessoas a escolherem um profissional.</p>
+        {linkProfile && <div class="review-target">
+          {linkProfile.photoUrl
+            ? <img class="avatar" src={linkProfile.photoUrl} alt={`Foto de ${linkProfile.displayName}`} width="48" height="48" />
+            : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(linkProfile.displayName)}</span>}
+          <div><span class="soft" style="font-size:.75rem">Você está avaliando</span><strong style="display:block">{linkProfile.displayName}</strong></div>
+        </div>}
+      </div>
+
+      <div data-form-content>
+        <label class="form-label">Seu nome<input class="field" name="patientName" minlength="2" maxlength="155" placeholder="Como você quer assinar" required /></label>
+        <label class="consent" style="margin-top:.75rem"><input type="checkbox" name="_initialsOnly" /><span>Mostrar apenas minhas iniciais na publicação</span></label>
+      </div>
+
+      <fieldset data-form-content style="border:0;padding:0;margin:0">
+        <legend class="form-label">Sua nota</legend>
+        <div class="rating-input" data-rating-input>
+          {[1,2,3,4,5].map((rating) => <label aria-label={`${rating} estrelas`}><input type="radio" name="rating" value={rating} checked={rating === 5} required /><span aria-hidden="true">★</span></label>)}
+        </div>
+        <p class="muted" data-rating-label style="margin:.5rem 0 0;font-size:.78125rem">Excelente, superou as expectativas</p>
+      </fieldset>
+
+      <label class="form-label" data-form-content>Comentário <span class="soft" style="font-weight:400">(opcional)</span><textarea class="textarea" name="comment" maxlength="2000" placeholder="Conte como foi o atendimento"></textarea></label>
+      <label class="consent" data-form-content><input type="checkbox" required /><span>Autorizo a publicação deste depoimento após a moderação.</span></label>
+      <div data-form-content><Captcha /></div>
+      <p class="form-status" data-form-status aria-live="polite"></p>
+      <button class="btn btn-primary btn-block" type="submit" data-form-content>Enviar avaliação</button>
+      <p class="soft" data-form-content style="margin:0;text-align:center;font-size:.75rem">Publicado só após moderação.</p>
+
+      <section class="empty-state" data-form-success hidden>
+        <h2>Obrigado pela avaliação</h2>
+        <p>Seu relato foi enviado e será publicado após a moderação.</p>
+      </section>
+    </form>
+  </main>
+  <AsyncFormScript />
+  <MetricScript eventType="review_link_view" />
+</BaseLayout>
+
+<script>
+  const labels: Record<string, string> = {
+    '1': 'Não atendeu minhas expectativas',
+    '2': 'Poderia ter sido melhor',
+    '3': 'Foi um bom atendimento',
+    '4': 'Muito bom, recomendo',
+    '5': 'Excelente, superou as expectativas',
+  }
+  const container = document.querySelector('[data-rating-input]')
+  const output = document.querySelector('[data-rating-label]')
+  const sync = (value: string) => {
+    container?.querySelectorAll('label').forEach((label, index) => label.classList.toggle('active', index < Number(value)))
+    if (output) output.textContent = labels[value] ?? ''
+  }
+  container?.addEventListener('change', (event) => {
+    const input = event.target
+    if (input instanceof HTMLInputElement) sync(input.value)
+  })
+  sync('5')
+</script>

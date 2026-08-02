@@ -1,0 +1,20 @@
+---
+interface Props { eventType?: string; catalogProfileId?: number }
+const { eventType, catalogProfileId } = Astro.props
+---
+<script is:inline define:vars={{ eventType, catalogProfileId }}>
+  const track = (payload) => fetch('/api/metrics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => undefined)
+
+  if (eventType) track({ eventType, catalogProfileId })
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest('[data-metric]') : null
+    if (!target) return
+    const id = Number(target.getAttribute('data-profile-id'))
+    track({ eventType: target.getAttribute('data-metric'), catalogProfileId: Number.isInteger(id) && id > 0 ? id : undefined })
+  })
+</script>

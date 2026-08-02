@@ -1,0 +1,46 @@
+---
+import type { CatalogSearch } from '../lib/catalog'
+interface Props { search: CatalogSearch }
+const { search } = Astro.props
+const dirty = Boolean(search.name || search.specialty || search.city || search.state || search.priceMin || search.priceMax || search.online)
+---
+<form class="filters" method="get" action={Astro.url.pathname} data-catalog-filters>
+  {search.seed && <input type="hidden" name="seed" value={search.seed} />}
+  <div class="filter-main">
+    <input class="field" aria-label="Nome" name="name" value={search.name} maxlength="100" placeholder="Buscar por nome" />
+    <input class="field" aria-label="Especialidade" name="specialty" value={search.specialty} maxlength="100" placeholder="Especialidade" />
+    <input class="field" aria-label="Cidade" name="city" value={search.city} maxlength="64" placeholder="Cidade" />
+    <details class="advanced" open={Boolean(search.state || search.priceMin || search.priceMax)}>
+      <summary class="btn btn-outline">Mais filtros</summary>
+    </details>
+  </div>
+
+  <div class="filter-row">
+    <div class="segments" role="group" aria-label="Modalidade de atendimento">
+      <label class="segment"><input type="radio" name="online" value="" checked={!search.online} />Todos</label>
+      <label class="segment"><input type="radio" name="online" value="true" checked={search.online === 'true'} />Online</label>
+      <label class="segment"><input type="radio" name="online" value="false" checked={search.online === 'false'} />Presencial</label>
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Buscar</button>
+    {dirty && <a class="clear-button" href={Astro.url.pathname}>Limpar filtros</a>}
+  </div>
+
+  <div class="advanced-fields" data-advanced-fields hidden={!Boolean(search.state || search.priceMin || search.priceMax)}>
+    <input class="field" aria-label="Estado" name="state" value={search.state} maxlength="2" placeholder="UF" />
+    <input class="field" aria-label="Preço mínimo" name="priceMin" value={search.priceMin} inputmode="decimal" placeholder="Preço mínimo" />
+    <input class="field" aria-label="Preço máximo" name="priceMax" value={search.priceMax} inputmode="decimal" placeholder="Preço máximo" />
+  </div>
+</form>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-catalog-filters]')
+  const details = form?.querySelector<HTMLDetailsElement>('details.advanced')
+  const advanced = form?.querySelector<HTMLElement>('[data-advanced-fields]')
+  if (details && advanced) {
+    const sync = () => { advanced.hidden = !details.open }
+    details.addEventListener('toggle', sync)
+    sync()
+  }
+  const state = form?.querySelector<HTMLInputElement>('input[name="state"]')
+  state?.addEventListener('input', () => { state.value = state.value.toUpperCase() })
+</script>

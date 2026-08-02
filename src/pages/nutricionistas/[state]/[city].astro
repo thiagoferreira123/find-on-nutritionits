@@ -1,0 +1,14 @@
+---
+import CatalogListing from '../../../components/CatalogListing.astro'
+import { catalogApi } from '../../../lib/api-client'
+import { locationSeo, parseCatalogSearch, toApiFilters } from '../../../lib/catalog'
+
+const state = Astro.params.state ?? ''
+const city = Astro.params.city ?? ''
+const seo = locationSeo(state, city)
+const search = { ...parseCatalogSearch(Astro.url), state: seo.state, city: seo.city }
+let response
+let failed = false
+try { response = await catalogApi.list(toApiFilters(search)) } catch { failed = true }
+---
+<CatalogListing search={search} seo={seo} response={response} failed={failed} />

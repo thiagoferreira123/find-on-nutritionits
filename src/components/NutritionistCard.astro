@@ -1,0 +1,41 @@
+---
+import { buildWhatsappUrl, catalogInitials, formatPrice } from '../lib/catalog'
+import type { CatalogCard } from '../lib/types'
+
+interface Props { profile: CatalogCard; query?: string; whatsappContext?: string }
+const { profile, query = '', whatsappContext } = Astro.props
+const price = formatPrice(profile.priceMin, profile.priceMax)
+const place = [profile.city, profile.state].filter(Boolean).join(', ')
+const visibleSpecialties = profile.specialties.slice(0, 3)
+const hiddenSpecialties = profile.specialties.length - visibleSpecialties.length
+const profileHref = `/nutricionistas/${encodeURIComponent(profile.slug)}${query ? `?${query}` : ''}`
+---
+<article class="nutri-card" data-profile-card>
+  <div class="card-top">
+    {profile.photoUrl
+      ? <img class="avatar" src={profile.photoUrl} alt={`Foto de ${profile.displayName}`} width="64" height="64" loading="lazy" />
+      : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(profile.displayName)}</span>}
+    <div class="card-content">
+      <h2 class="card-title"><a href={profileHref}>{profile.displayName}</a></h2>
+      <p class="card-meta">
+        {profile.averageRating !== null && profile.reviewCount > 0
+          ? <span class="rating" aria-label={`Nota média ${profile.averageRating.toFixed(1)} de 5, ${profile.reviewCount} avaliações`}><span class="star">★</span><strong>{profile.averageRating.toFixed(1)}</strong> ({profile.reviewCount})</span>
+          : <span>Novo no catálogo</span>}
+        {profile.onlineService && <span> · Online</span>}
+        {place && <span> · {place}</span>}
+      </p>
+    </div>
+  </div>
+
+  {visibleSpecialties.length > 0 && <ul class="chips">
+    {visibleSpecialties.map((specialty) => <li class="chip">{specialty}</li>)}
+    {hiddenSpecialties > 0 && <li class="chip chip-more">+{hiddenSpecialties}</li>}
+  </ul>}
+
+  <div class="card-bottom">
+    {price && <><p class="eyebrow">Faixa por consulta</p><p class="price">{price}</p></>}
+    {profile.whatsapp
+      ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
+      : <a class="btn btn-outline btn-block" href={profileHref}>Pedir contato</a>}
+  </div>
+</article>
