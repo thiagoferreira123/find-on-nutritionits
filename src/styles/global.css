@@ -57,7 +57,7 @@ a { color: inherit; }
 .soft { color: var(--soft); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
-.skip-link { position: fixed; top: .75rem; left: .75rem; z-index: 100; padding: .625rem .875rem; border-radius: var(--radius-sm); background: var(--ink); color: white; font-size: .8125rem; font-weight: 700; text-decoration: none; transform: translateY(-180%); }
+.skip-link { position: fixed; top: .75rem; left: .75rem; z-index: 100; padding: .625rem .875rem; border-radius: var(--radius-sm); background: #dff8ed; color: #115b3c; border: 1px solid #8ce3bd; font-size: .8125rem; font-weight: 700; text-decoration: none; transform: translateY(-180%); }
 .skip-link:focus { transform: translateY(0); }
 .site-header { position: sticky; top: 0; z-index: 40; height: 73px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.95); backdrop-filter: blur(12px); }
 .header-inner { height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
@@ -120,7 +120,7 @@ a { color: inherit; }
 .segment { position: relative; min-height: 2.375rem; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: .45rem .75rem; color: #525252; background: white; font-size: .78125rem; font-weight: 700; }
 .segment:hover { border-color: #a3a3a3; }
 .segment:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
-.segment:has(input:checked) { border-color: var(--ink); background: var(--ink); color: white; }
+.segment:has(input:checked) { border-color: #6bdcab; background: #e8faf2; color: #115b3c; }
 .segment input { position: absolute; opacity: 0; pointer-events: none; }
 .clear-button { flex: 0 0 auto; border: 0; background: none; color: var(--focus); font-size: .75rem; font-weight: 700; text-decoration: underline; text-underline-offset: .2rem; }
 .advanced { position: relative; }
@@ -162,7 +162,7 @@ a { color: inherit; }
 .price { margin: .1875rem 0 .75rem; font-size: .875rem; font-weight: 750; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: .5rem; margin-top: 2rem; }
 .page-link { width: 2.25rem; height: 2.25rem; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: .375rem; color: #525252; font-size: .8125rem; text-decoration: none; }
-.page-current { color: white; background: var(--ink); border-color: var(--ink); font-weight: 650; }
+.page-current { color: #115b3c; background: #e8faf2; border-color: #6bdcab; font-weight: 750; }
 .list-sentinel { min-height: 5rem; display: flex; align-items: center; justify-content: center; color: var(--soft); font-size: .8125rem; }
 .empty-state, .error-state { padding: 3rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: white; text-align: center; }
 .empty-state h2, .error-state h2 { margin: 0; font-size: 1rem; }

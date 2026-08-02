@@ -7,8 +7,14 @@ describe('fidelidade ao catálogo original', () => {
   it('preserva hero fotográfico, marca DietSystem e filtros progressivos', () => {
     expect(read('../components/CatalogHero.astro')).toContain('class="hero-image"')
     expect(read('../layouts/BaseLayout.astro')).toContain('<span>DietSystem</span>')
+    expect(read('../layouts/BaseLayout.astro')).toContain('href="/img/favicon.png"')
     expect(read('../components/CatalogFilters.astro')).toContain('class="advanced"')
     expect(read('../components/CatalogFilters.astro')).toContain('class="segments"')
+  })
+
+  it('usa verde nos estados selecionados em vez de fundos pretos', () => {
+    expect(read('./global.css')).toContain('.segment:has(input:checked) { border-color: #6bdcab; background: #e8faf2; color: #115b3c; }')
+    expect(read('./global.css')).toContain('.page-current { color: #115b3c; background: #e8faf2; border-color: #6bdcab;')
   })
 
   it('preserva a composição original dos cards sem o selo de perfil novo', () => {
