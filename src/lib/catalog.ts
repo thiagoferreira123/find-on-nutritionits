@@ -1,3 +1,5 @@
+import type { CatalogLocation } from './types'
+
 export const CATALOG_WHATSAPP_MESSAGE =
   'Olá, te conheci no site do DietSystem e estou procurando nutricionista para: '
 
@@ -123,6 +125,30 @@ export function formatPrice(min: number | null, max: number | null): string | nu
 export function catalogInitials(name: string): string {
   return name.split(/\s+/).map((part) => part.match(/[\p{L}\p{N}]/u)?.[0] ?? '')
     .filter(Boolean).slice(0, 2).join('').toUpperCase()
+}
+
+export function catalogDisplayText(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null
+  const text = String(value).trim()
+  return text && text !== '0' ? text : null
+}
+
+export function visibleCatalogLocations(locations: CatalogLocation[]): CatalogLocation[] {
+  return locations.map((location) => {
+    const scheduleFlag: unknown = location.publicScheduleEnabled
+    return {
+      ...location,
+      name: catalogDisplayText(location.name) ?? '',
+      city: catalogDisplayText(location.city),
+      state: catalogDisplayText(location.state),
+      address: catalogDisplayText(location.address),
+      publicScheduleEnabled: scheduleFlag === true || scheduleFlag === 1 || scheduleFlag === '1',
+      publicScheduleUrl: catalogDisplayText(location.publicScheduleUrl),
+    }
+  }).filter((location) => Boolean(
+    location.name || location.city || location.state || location.address ||
+    (location.publicScheduleEnabled && location.publicScheduleUrl),
+  ))
 }
 
 export function youtubeEmbedUrl(value: string | null | undefined): string | null {

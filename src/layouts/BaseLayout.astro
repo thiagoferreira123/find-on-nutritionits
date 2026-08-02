@@ -53,18 +53,23 @@ const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://my.dietsystem.com.br'
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={image} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="/img/logo.png" />
     {structuredData && <script is:inline type="application/ld+json" set:html={serializeJsonLd(structuredData)} />}
   </head>
   <body>
     <header class="site-header">
       <div class="container header-inner">
-        <a class="brand" href="/nutricionistas" aria-label="DietSystem — catálogo de nutricionistas">
-          <img src="/img/logo.png" alt="" width="32" height="32" />
-          <span>DietSystem</span>
+        <a class="brand" href="/nutricionistas" aria-label="Live System — catálogo de nutricionistas">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>
+          </span>
+          <span>Live System</span>
         </a>
         <nav class="header-nav" aria-label="Navegação principal">
-          <a class="btn btn-primary btn-sm questions-link" href="/duvidas">Pergunte ao especialista</a>
+          <a class="header-link questions-link" href="/duvidas">Dúvidas</a>
           <a class="btn btn-outline btn-sm" href={`${appUrl}/login`}>Sou nutricionista</a>
         </nav>
       </div>
@@ -74,7 +79,7 @@ const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://my.dietsystem.com.br'
 
     <footer class="site-footer">
       <div class="container footer-inner">
-        <span>© {new Date().getFullYear()} DietSystem</span>
+        <span>Perfis de nutricionistas assinantes do Live System.</span>
         <nav class="footer-links" aria-label="Links do rodapé">
           <a href="/duvidas">Pergunte ao especialista</a>
           <a href="/privacidade">Privacidade</a>

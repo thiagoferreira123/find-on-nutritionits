@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCanonicalPath,
   buildWhatsappUrl,
+  catalogDisplayText,
   catalogInitials,
   formatPrice,
   locationSeo,
@@ -9,6 +10,7 @@ import {
   specialtySeo,
   serializeJsonLd,
   toReviewSignature,
+  visibleCatalogLocations,
   youtubeEmbedUrl,
 } from './catalog'
 
@@ -69,6 +71,21 @@ describe('apresentação do catálogo', () => {
   it('calcula iniciais sem expor conteúdo como HTML', () => {
     expect(catalogInitials('Ana Souza')).toBe('AS')
     expect(catalogInitials('<script>alert(1)</script>')).not.toContain('<')
+  })
+
+  it('trata zero do backend como campo ausente', () => {
+    expect(catalogDisplayText(0)).toBeNull()
+    expect(catalogDisplayText(' 0 ')).toBeNull()
+    expect(catalogDisplayText('Av. Paulista, 1159')).toBe('Av. Paulista, 1159')
+  })
+
+  it('remove locais vazios e nunca deixa zero como texto visível', () => {
+    expect(visibleCatalogLocations([
+      { id: 'empty', sourceLocationId: null, name: '0', city: null, state: null, address: '0', publicScheduleEnabled: 0 as never, publicScheduleUrl: '0' },
+      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: 0 as never, publicScheduleUrl: null },
+    ])).toEqual([
+      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: false, publicScheduleUrl: null },
+    ])
   })
 
   it('converte links YouTube conhecidos em embed seguro', () => {

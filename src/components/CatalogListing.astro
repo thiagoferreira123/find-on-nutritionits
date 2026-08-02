@@ -57,10 +57,7 @@ const apiFilters = {
     <CatalogHero title={seo.heading} description={seo.intro} />
     <section class="container listing" aria-labelledby="catalog-results-title">
       <CatalogFilters search={{ ...search, seed: response?.seed ?? search.seed }} />
-      <div class="results-head">
-        <h2 id="catalog-results-title">Nutricionistas disponíveis</h2>
-        {response && <p>{response.items.length} {response.items.length === 1 ? 'perfil nesta página' : 'perfis nesta página'}</p>}
-      </div>
+      <h2 class="sr-only" id="catalog-results-title">Nutricionistas disponíveis</h2>
 
       {failed && <div class="error-state" role="alert">
         <h2>Não foi possível carregar os profissionais</h2>
@@ -137,10 +134,13 @@ const apiFilters = {
     const meta = element('p', 'card-meta')
     const rating = profile.averageRating !== null && profile.reviewCount > 0
       ? `★ ${Number(profile.averageRating).toFixed(1)} (${profile.reviewCount})`
-      : 'Novo no catálogo'
+      : ''
     const place = [profile.city, profile.state].filter(Boolean).join(', ')
-    meta.textContent = `${rating}${profile.onlineService ? ' · Online' : ''}${place ? ` · ${place}` : ''}`
-    content.append(meta)
+    const metadata = [rating, profile.onlineService ? 'Online' : '', place].filter(Boolean)
+    if (metadata.length) {
+      meta.textContent = metadata.join(' · ')
+      content.append(meta)
+    }
     top.append(content)
     article.append(top)
     if (profile.specialties.length) {
@@ -155,7 +155,11 @@ const apiFilters = {
       bottom.append(element('p', 'eyebrow', 'Faixa por consulta'))
       bottom.append(element('p', 'price', formatted))
     }
-    const action = element('a', `btn ${profile.whatsapp ? 'btn-primary' : 'btn-outline'} btn-block`, profile.whatsapp ? 'WhatsApp' : 'Pedir contato')
+    const actions = element('div', 'card-actions')
+    const profileAction = element('a', 'btn btn-outline btn-block', 'Ver perfil')
+    profileAction.href = link.href
+    actions.append(profileAction)
+    const action = element('a', 'btn btn-primary btn-block', profile.whatsapp ? 'WhatsApp' : 'Conhecer')
     action.href = profile.whatsapp ? whatsapp(profile.whatsapp, apiFilters.specialty) : link.href
     if (profile.whatsapp) {
       action.target = '_blank'
@@ -163,7 +167,8 @@ const apiFilters = {
       action.dataset.metric = 'whatsapp_click'
       action.dataset.profileId = profile.id
     }
-    bottom.append(action)
+    actions.append(action)
+    bottom.append(actions)
     article.append(bottom)
     return article
   }

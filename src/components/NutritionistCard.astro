@@ -9,6 +9,8 @@ const place = [profile.city, profile.state].filter(Boolean).join(', ')
 const visibleSpecialties = profile.specialties.slice(0, 3)
 const hiddenSpecialties = profile.specialties.length - visibleSpecialties.length
 const profileHref = `/nutricionistas/${encodeURIComponent(profile.slug)}${query ? `?${query}` : ''}`
+const hasRating = profile.averageRating !== null && profile.reviewCount > 0
+const hasMetadata = hasRating || profile.onlineService || Boolean(place)
 ---
 <article class="nutri-card" data-profile-card>
   <div class="card-top">
@@ -17,13 +19,11 @@ const profileHref = `/nutricionistas/${encodeURIComponent(profile.slug)}${query 
       : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(profile.displayName)}</span>}
     <div class="card-content">
       <h2 class="card-title"><a href={profileHref}>{profile.displayName}</a></h2>
-      <p class="card-meta">
-        {profile.averageRating !== null && profile.reviewCount > 0
-          ? <span class="rating" aria-label={`Nota média ${profile.averageRating.toFixed(1)} de 5, ${profile.reviewCount} avaliações`}><span class="star">★</span><strong>{profile.averageRating.toFixed(1)}</strong> ({profile.reviewCount})</span>
-          : <span>Novo no catálogo</span>}
-        {profile.onlineService && <span> · Online</span>}
-        {place && <span> · {place}</span>}
-      </p>
+      {hasMetadata && <p class="card-meta">
+        {hasRating && <span class="rating" aria-label={`Nota média ${profile.averageRating!.toFixed(1)} de 5, ${profile.reviewCount} avaliações`}><span class="star">★</span><strong>{profile.averageRating!.toFixed(1)}</strong> ({profile.reviewCount})</span>}
+        {profile.onlineService && <span>{hasRating ? ' · ' : ''}Online</span>}
+        {place && <span>{hasRating || profile.onlineService ? ' · ' : ''}{place}</span>}
+      </p>}
     </div>
   </div>
 
@@ -34,8 +34,11 @@ const profileHref = `/nutricionistas/${encodeURIComponent(profile.slug)}${query 
 
   <div class="card-bottom">
     {price && <><p class="eyebrow">Faixa por consulta</p><p class="price">{price}</p></>}
-    {profile.whatsapp
-      ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
-      : <a class="btn btn-outline btn-block" href={profileHref}>Pedir contato</a>}
+    <div class="card-actions">
+      <a class="btn btn-outline btn-block" href={profileHref}>Ver perfil</a>
+      {profile.whatsapp
+        ? <a class="btn btn-primary btn-block" href={buildWhatsappUrl(profile.whatsapp, whatsappContext)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>WhatsApp</a>
+        : <a class="btn btn-primary btn-block" href={profileHref}>Conhecer</a>}
+    </div>
   </div>
 </article>
