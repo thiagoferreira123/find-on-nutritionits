@@ -9,9 +9,12 @@ const DAYS = [
 export function publicScheduleUrl(value: string | null | undefined, appOrigin: string): string | null {
   if (!value) return null
   try {
-    const url = value.startsWith('/agenda/')
+    const parsed = value.startsWith('/')
       ? new URL(value, `${appOrigin.replace(/\/+$/, '')}/`)
       : new URL(value)
+    const url = parsed.pathname.startsWith('/agenda/')
+      ? new URL(`${parsed.pathname}${parsed.search}${parsed.hash}`, `${appOrigin.replace(/\/+$/, '')}/`)
+      : parsed
     return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null
   } catch {
     return null

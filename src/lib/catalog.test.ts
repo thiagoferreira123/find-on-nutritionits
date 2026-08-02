@@ -107,10 +107,10 @@ describe('apresentação do catálogo', () => {
 
   it('remove locais vazios e nunca deixa zero como texto visível', () => {
     expect(visibleCatalogLocations([
-      { id: 'empty', sourceLocationId: null, name: '0', city: null, state: null, address: '0', publicScheduleEnabled: 0 as never, publicScheduleUrl: '0' },
-      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: 0 as never, publicScheduleUrl: null },
+      { id: 'empty', sourceLocationId: null, name: '0', city: null, state: null, address: '0', publicScheduleEnabled: 0 as never, publicScheduleUrl: '0', weeklyHours: null },
+      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: 0 as never, publicScheduleUrl: null, weeklyHours: null },
     ])).toEqual([
-      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: false, publicScheduleUrl: null },
+      { id: 'online', sourceLocationId: null, name: 'Online', city: 'São Paulo', state: 'SP', address: 'Av. Paulista, 1159 - Bela Vista', publicScheduleEnabled: false, publicScheduleUrl: null, weeklyHours: null },
     ])
   })
 

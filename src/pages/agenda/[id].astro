@@ -1,0 +1,12 @@
+---
+import { publicScheduleUrl } from '../../lib/schedule'
+
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://my.dietsystem.com.br'
+const destination = publicScheduleUrl(`/agenda/${Astro.params.id ?? ''}`, appUrl)
+
+if (!destination) {
+  return new Response('Agenda inválida', { status: 404 })
+}
+
+return Astro.redirect(destination, 302)
+---

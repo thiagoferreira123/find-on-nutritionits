@@ -9,6 +9,12 @@ describe("public schedule presentation", () => {
         "https://my.dietsystem.com.br/",
       ),
     ).toBe("https://my.dietsystem.com.br/agenda/NjQ1ODkzMzk1");
+    expect(
+      publicScheduleUrl(
+        "https://encontre-um-nutri.dietsystem.com.br/agenda/NjQ1ODkzMzk1",
+        "https://my.dietsystem.com.br",
+      ),
+    ).toBe("https://my.dietsystem.com.br/agenda/NjQ1ODkzMzk1");
   });
 
   it("keeps safe external scheduling URLs", () => {
