@@ -14,6 +14,7 @@ import {
   visibleCatalogLocations,
   youtubeEmbedUrl,
 } from '../../lib/catalog'
+import { groupWeeklyHours, publicScheduleUrl } from '../../lib/schedule'
 
 const slug = Astro.params.slug ?? ''
 let profile
@@ -30,8 +31,12 @@ const title = profile ? `${profile.displayName} | Nutricionista` : status === 40
 const profileId = profile?.id === null || profile?.id === undefined ? undefined : Number(profile.id)
 const locations = profile ? visibleCatalogLocations(profile.locations) : []
 const place = locations.map((location) => [location.city, location.state].filter(Boolean).join(', ')).find(Boolean)
-const schedule = locations.find((location) => location.publicScheduleEnabled && location.publicScheduleUrl)
-const hasDirectContact = Boolean(profile?.whatsapp || schedule?.publicScheduleUrl)
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://my.dietsystem.com.br'
+const schedule = locations.map((location) => ({
+  location,
+  url: location.publicScheduleEnabled ? publicScheduleUrl(location.publicScheduleUrl, appUrl) : null,
+})).find((entry) => entry.url)
+const hasDirectContact = Boolean(profile?.whatsapp || schedule?.url)
 const price = profile ? formatPrice(profile.priceMin, profile.priceMax) : null
 const averageRating = profile?.reviews.length ? profile.reviews.reduce((sum, review) => sum + review.rating, 0) / profile.reviews.length : null
 const instagram = profile ? instagramUrl(profile.instagram) : null
@@ -89,7 +94,7 @@ const structuredData = profile ? {
           {profile.specialties.length > 0 && <ul class="chips">{profile.specialties.map((specialty) => <li class="chip">{specialty}</li>)}</ul>}
           <div class="profile-actions">
             {profile.whatsapp && <a class="btn btn-primary" href={buildWhatsappUrl(profile.whatsapp, Astro.url.searchParams.get('specialty') ?? undefined)} target="_blank" rel="noreferrer" data-metric="whatsapp_click" data-profile-id={profile.id}>Conversar no WhatsApp</a>}
-            {Boolean(schedule?.publicScheduleUrl) && <a class="btn btn-outline" href={schedule!.publicScheduleUrl!} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agendar consulta</a>}
+            {schedule?.url && <a class="btn btn-outline" href={schedule.url} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agendar consulta</a>}
           </div>
         </div>
       </div>
@@ -125,12 +130,22 @@ const structuredData = profile ? {
 
         {locations.length > 0 && <section class="panel">
           <h2>Onde atende</h2>
-          <div class="location-grid">{locations.map((location) => <article class="location">
-            {location.name && <h3>{location.name}</h3>}
-            {(location.city || location.state) && <p>{[location.city, location.state].filter(Boolean).join(', ')}</p>}
-            {location.address && <p>{location.address}</p>}
-            {Boolean(location.publicScheduleEnabled && location.publicScheduleUrl) && <a class="btn btn-outline btn-sm btn-block" style="margin-top:.75rem" href={location.publicScheduleUrl!} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agenda online</a>}
-          </article>)}</div>
+          <div class="location-grid">{locations.map((location) => {
+            const agendaUrl = location.publicScheduleEnabled
+              ? publicScheduleUrl(location.publicScheduleUrl, appUrl)
+              : null
+            const weeklyHours = groupWeeklyHours(location.weeklyHours)
+            return <article class="location">
+              {location.name && <h3>{location.name}</h3>}
+              {(location.city || location.state) && <p>{[location.city, location.state].filter(Boolean).join(', ')}</p>}
+              {location.address && <p>{location.address}</p>}
+              {weeklyHours.length > 0 && <div class="location-hours">
+                <h4>Dias e horários</h4>
+                <ul>{weeklyHours.map((range) => <li><strong>{range.days}</strong><span>{range.hours}</span></li>)}</ul>
+              </div>}
+              {agendaUrl && <a class="btn btn-outline btn-sm btn-block" style="margin-top:.75rem" href={agendaUrl} target="_blank" rel="noreferrer" data-metric="schedule_click" data-profile-id={profile.id}>Agenda online</a>}
+            </article>
+          })}</div>
         </section>}
 
         {profile.reviews.length > 0 && <section class="panel">

@@ -24,7 +24,18 @@ export interface CatalogLocation {
   address: string | null
   publicScheduleEnabled: boolean
   publicScheduleUrl: string | null
+  weeklyHours: CatalogWeeklyHours | null
 }
+
+export interface CatalogDailyHours {
+  start: string
+  end: string
+  break_start?: string
+  break_end?: string
+}
+
+export type CatalogWeekday = 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday'
+export type CatalogWeeklyHours = Partial<Record<CatalogWeekday, CatalogDailyHours>>
 
 export interface CatalogReview {
   id: string
