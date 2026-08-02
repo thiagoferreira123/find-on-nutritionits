@@ -98,7 +98,7 @@ a { color: inherit; }
 .hero-note { margin: .875rem 0 0; color: rgba(255,255,255,.7); font-size: .75rem; line-height: 1.5; }
 
 .listing { margin-top: 1.75rem; }
-.filters { position: sticky; top: 80px; z-index: 30; scroll-margin-top: 90px; padding: 1.125rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(255,255,255,.97); box-shadow: var(--shadow-md); }
+.filters { scroll-margin-top: 90px; padding: 1.125rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(255,255,255,.97); box-shadow: var(--shadow-md); }
 .filters-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .875rem; }
 .filters-heading h2 { margin: 0; font-size: .9375rem; letter-spacing: -.015em; }
 .filters-heading p { margin: .2rem 0 0; color: var(--muted); font-size: .75rem; line-height: 1.4; }
