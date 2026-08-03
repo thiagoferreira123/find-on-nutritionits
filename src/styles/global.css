@@ -230,6 +230,11 @@ a { color: inherit; }
 .questions-header p, .review-form .intro { margin: .75rem 0 0; color: #525252; font-size: .9375rem; line-height: 1.65; }
 .questions-grid { margin-top: 2rem; display: grid; grid-template-columns: minmax(0,1fr) 360px; gap: 1.5rem; align-items: start; }
 .question-list { display: grid; gap: .75rem; }
+.question-search { padding: 1rem; border: 1px solid var(--line); border-radius: .5rem; background: var(--surface-soft); display: grid; gap: .75rem; }
+.question-search-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.question-search-heading label { color: var(--ink); font-size: .875rem; font-weight: 650; }
+.question-search-heading p { margin: .2rem 0 0; color: var(--muted); font-size: .75rem; }
+.question-search-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .5rem; }
 .question { padding: 1.5rem; border: 1px solid var(--line); border-radius: .5rem; }
 .question .asked { margin: 0; color: var(--soft); font-size: .78125rem; }
 .question h2 { margin: .375rem 0 0; font-size: 1.0625rem; letter-spacing: -.02em; }

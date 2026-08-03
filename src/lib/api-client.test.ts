@@ -78,4 +78,17 @@ describe('CatalogApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://api.example.com/api/public/nutritionists?seed=s', expect.any(Object))
     expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://api.example.com/api/public/nutritionists?seed=s&cursor=cursor-1', expect.any(Object))
   })
+
+  it('encodes title search with the questions page', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], nextPage: null }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const api = new CatalogApi('https://api.example.com/api')
+
+    await api.questions(2, 'Vitamin D & calcium')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.com/api/public/questions?page=2&search=Vitamin+D+%26+calcium',
+      expect.any(Object),
+    )
+  })
 })

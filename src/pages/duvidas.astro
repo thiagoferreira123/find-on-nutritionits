@@ -4,20 +4,20 @@ import Captcha from '../components/Captcha.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { catalogApi } from '../lib/api-client'
 import { catalogInitials } from '../lib/catalog'
+import { parseQuestionSearch, questionPagePath } from '../lib/questions'
 
-const parsedPage = Number(Astro.url.searchParams.get('page'))
-const page = Number.isInteger(parsedPage) && parsedPage >= 1 && parsedPage <= 1000 ? parsedPage : 1
+const { page, search } = parseQuestionSearch(Astro.url)
 let response
 let failed = false
-try { response = await catalogApi.questions(page) } catch { failed = true }
+try { response = await catalogApi.questions(page, search || undefined) } catch { failed = true }
 const items = response?.items ?? []
 ---
 <BaseLayout
   title="Pergunte ao especialista | DietSystem"
   description="Pergunte ao especialista: dúvidas de nutrição respondidas por nutricionistas do DietSystem."
-  canonicalPath={page > 1 ? `/duvidas?page=${page}` : '/duvidas'}
-  previousPath={page > 1 ? `/duvidas${page > 2 ? `?page=${page - 1}` : ''}` : undefined}
-  nextPath={response?.nextPage ? `/duvidas?page=${response.nextPage}` : undefined}
+  canonicalPath={search ? '/duvidas' : questionPagePath(page, '')}
+  previousPath={page > 1 ? questionPagePath(page - 1, search) : undefined}
+  nextPath={response?.nextPage ? questionPagePath(response.nextPage, search) : undefined}
 >
   <main class="container content-main">
     <a class="back-link" href="/nutricionistas">← Voltar ao catálogo</a>
@@ -28,8 +28,22 @@ const items = response?.items ?? []
 
     <div class="questions-grid">
       <section class="question-list" aria-label="Dúvidas publicadas">
+        <form class="question-search" method="get" action="/duvidas" role="search">
+          <div class="question-search-heading">
+            <div>
+              <label for="question-search">Buscar dúvidas</label>
+              <p>Pesquise por palavras do título da pergunta.</p>
+            </div>
+            {search && <a class="clear-button" href="/duvidas">Limpar busca</a>}
+          </div>
+          <div class="question-search-row">
+            <input id="question-search" class="field" type="search" name="search" value={search} maxlength="100" autocomplete="off" placeholder="Ex.: vitamina D" />
+            <button class="btn btn-primary" type="submit">Buscar</button>
+          </div>
+        </form>
         {failed && <div class="error-state"><h2>Não foi possível carregar as dúvidas</h2><a class="btn btn-outline btn-sm" style="margin-top:1rem" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a></div>}
-        {!failed && items.length === 0 && <div class="empty-state"><h2>Ainda não há perguntas publicadas</h2><p>Envie a primeira — a resposta fica pública para ajudar outras pessoas.</p></div>}
+        {!failed && items.length === 0 && search && <div class="empty-state"><h2>Nenhuma dúvida encontrada</h2><p>Tente buscar por outras palavras do título.</p><a class="btn btn-outline btn-sm" style="margin-top:1rem" href="/duvidas">Limpar busca</a></div>}
+        {!failed && items.length === 0 && !search && <div class="empty-state"><h2>Ainda não há perguntas publicadas</h2><p>Envie a primeira — a resposta fica pública para ajudar outras pessoas.</p></div>}
         {items.map((question) => <article class="question">
           <p class="asked">{question.visitorName} perguntou</p>
           <h2>{question.title}</h2>
@@ -47,9 +61,9 @@ const items = response?.items ?? []
         </article>)}
 
         {(page > 1 || response?.nextPage) && <nav class="pagination" aria-label="Paginação das dúvidas">
-          {page > 1 && <a class="btn btn-outline btn-sm" rel="prev" href={page === 2 ? '/duvidas' : `/duvidas?page=${page - 1}`}>Página anterior</a>}
+          {page > 1 && <a class="btn btn-outline btn-sm" rel="prev" href={questionPagePath(page - 1, search)}>Página anterior</a>}
           <span class="muted" style="font-size:.78125rem">Página {page}</span>
-          {response?.nextPage && <a class="btn btn-outline btn-sm" rel="next" href={`/duvidas?page=${response.nextPage}`}>Próxima página</a>}
+          {response?.nextPage && <a class="btn btn-outline btn-sm" rel="next" href={questionPagePath(response.nextPage, search)}>Próxima página</a>}
         </nav>}
       </section>
 

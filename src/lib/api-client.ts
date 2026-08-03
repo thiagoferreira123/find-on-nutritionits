@@ -95,8 +95,10 @@ export class CatalogApi {
     return this.request(`/public/nutritionists/${encodeURIComponent(slug)}`)
   }
 
-  questions(page: number): Promise<CatalogQuestionsResponse> {
-    return this.request(`/public/questions?page=${page}`)
+  questions(page: number, search?: string): Promise<CatalogQuestionsResponse> {
+    const params = new URLSearchParams({ page: String(page) })
+    if (search) params.set('search', search)
+    return this.request(`/public/questions?${params.toString()}`)
   }
 
   reviewLink(token: string): Promise<ReviewLinkProfile> {
