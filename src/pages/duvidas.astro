@@ -3,14 +3,15 @@ import AsyncFormScript from '../components/AsyncFormScript.astro'
 import Captcha from '../components/Captcha.astro'
 import BaseLayout from '../layouts/BaseLayout.astro'
 import { catalogApi } from '../lib/api-client'
-import { catalogInitials } from '../lib/catalog'
-import { parseQuestionSearch, questionPagePath } from '../lib/questions'
+import { catalogInitials, formatReviewDate } from '../lib/catalog'
+import { parseQuestionSearch, questionPagePath, questionSummaryLabel, summarizeQuestions } from '../lib/questions'
 
 const { page, search } = parseQuestionSearch(Astro.url)
 let response
 let failed = false
 try { response = await catalogApi.questions(page, search || undefined) } catch { failed = true }
 const items = response?.items ?? []
+const summary = summarizeQuestions(items)
 ---
 <BaseLayout
   title="Pergunte ao especialista | DietSystem"
@@ -19,66 +20,170 @@ const items = response?.items ?? []
   previousPath={page > 1 ? questionPagePath(page - 1, search) : undefined}
   nextPath={response?.nextPage ? questionPagePath(response.nextPage, search) : undefined}
 >
-  <main class="container content-main">
+  <main class="container content-main qa-page">
     <a class="back-link" href="/nutricionistas">← Voltar ao catálogo</a>
-    <header class="questions-header">
-      <h1>Pergunte ao especialista</h1>
-      <p>Sua pergunta é respondida por nutricionistas do catálogo. São orientações gerais e não substituem uma consulta.</p>
+
+    <header class="qa-hero">
+      <p class="qa-eyebrow">Pergunte ao especialista</p>
+      <h1>Dúvidas de nutrição respondidas por nutricionistas</h1>
+      <p class="qa-lead">Escreva sua pergunta, publique de graça e receba a orientação de profissionais do catálogo DietSystem. Toda resposta fica pública para ajudar quem tem a mesma dúvida.</p>
+      <div class="qa-hero-actions">
+        <a class="btn btn-primary" href="#enviar">Enviar minha dúvida</a>
+        <a class="btn btn-outline" href="#duvidas">Ler as dúvidas publicadas</a>
+      </div>
+      <p class="qa-note">As respostas são orientações gerais de educação alimentar e não substituem uma consulta individual.</p>
     </header>
 
-    <div class="questions-grid">
-      <section class="question-list" aria-label="Dúvidas publicadas">
-        <form class="question-search" method="get" action="/duvidas" role="search">
-          <div class="question-search-heading">
-            <div>
-              <label for="question-search">Buscar dúvidas</label>
-              <p>Pesquise por palavras do título da pergunta.</p>
-            </div>
-            {search && <a class="clear-button" href="/duvidas">Limpar busca</a>}
+    <section class="qa-section" id="duvidas" aria-labelledby="qa-feed-title">
+      <div class="qa-section-head">
+        <div class="qa-section-copy">
+          <p class="results-eyebrow">Comunidade</p>
+          <h2 id="qa-feed-title">Dúvidas publicadas</h2>
+          {!failed && items.length > 0 && <p class="qa-section-summary">{questionSummaryLabel(summary, search)}</p>}
+          {!failed && items.length === 0 && <p class="qa-section-summary">Nenhuma dúvida para mostrar agora.</p>}
+        </div>
+        <form class="qa-search" method="get" action="/duvidas" role="search">
+          <label class="sr-only" for="question-search">Buscar dúvidas pelo título</label>
+          <div class="qa-search-row">
+            <input id="question-search" class="field qa-search-input" type="search" name="search" value={search} maxlength="100" autocomplete="off" placeholder="Buscar por título — ex.: vitamina D" />
+            <button class="btn btn-primary btn-sm" type="submit">Buscar</button>
           </div>
-          <div class="question-search-row">
-            <input id="question-search" class="field" type="search" name="search" value={search} maxlength="100" autocomplete="off" placeholder="Ex.: vitamina D" />
-            <button class="btn btn-primary" type="submit">Buscar</button>
-          </div>
+          {search && <a class="qa-search-clear" href="/duvidas">Limpar busca</a>}
         </form>
-        {failed && <div class="error-state"><h2>Não foi possível carregar as dúvidas</h2><a class="btn btn-outline btn-sm" style="margin-top:1rem" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a></div>}
-        {!failed && items.length === 0 && search && <div class="empty-state"><h2>Nenhuma dúvida encontrada</h2><p>Tente buscar por outras palavras do título.</p><a class="btn btn-outline btn-sm" style="margin-top:1rem" href="/duvidas">Limpar busca</a></div>}
-        {!failed && items.length === 0 && !search && <div class="empty-state"><h2>Ainda não há perguntas publicadas</h2><p>Envie a primeira — a resposta fica pública para ajudar outras pessoas.</p></div>}
-        {items.map((question) => <article class="question">
-          <p class="asked">{question.visitorName} perguntou</p>
-          <h2>{question.title}</h2>
-          <p class="body">{question.content}</p>
-          {question.answers.length > 0 ? <div class="answers">{question.answers.map((answer) => <div class="answer">
-            {answer.professionalPhotoUrl
-              ? <img class="avatar" src={answer.professionalPhotoUrl} alt={`Foto de ${answer.professionalName}`} width="36" height="36" loading="lazy" />
-              : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(answer.professionalName)}</span>}
-            <div>
-              <a class="answer-name" href={`/nutricionistas/${answer.professionalSlug}`}>{answer.professionalName}</a>
-              <span class="soft" style="display:block;font-size:.75rem">Nutricionista</span>
-              <p>{answer.content}</p>
+      </div>
+
+      {failed && <div class="error-state">
+        <h2>Não foi possível carregar as dúvidas</h2>
+        <p>A conexão com o catálogo falhou. Tente novamente em instantes.</p>
+        <a class="btn btn-outline btn-sm state-action" href={Astro.url.pathname + Astro.url.search}>Tentar novamente</a>
+      </div>}
+
+      {!failed && items.length === 0 && search && <div class="empty-state">
+        <h2>Nenhuma dúvida encontrada</h2>
+        <p>Não achamos nenhum título com “{search}”. Tente outras palavras ou envie essa dúvida você mesmo.</p>
+        <div class="qa-empty-actions">
+          <a class="btn btn-outline btn-sm" href="/duvidas">Limpar busca</a>
+          <a class="btn btn-primary btn-sm" href="#enviar">Enviar esta dúvida</a>
+        </div>
+      </div>}
+
+      {!failed && items.length === 0 && !search && <div class="empty-state">
+        <h2>Ainda não há perguntas publicadas</h2>
+        <p>Envie a primeira. Assim que um nutricionista responder, a dúvida fica pública para ajudar outras pessoas.</p>
+        <a class="btn btn-primary btn-sm state-action" href="#enviar">Enviar a primeira dúvida</a>
+      </div>}
+
+      {items.length > 0 && <ol class="qa-feed">
+        {items.map((question, index) => <li style={`--i:${index}`}>
+          <article class="qa-card" data-status={question.answers.length > 0 ? 'answered' : 'waiting'}>
+            <div class="qa-card-head">
+              {question.answers.length > 0
+                ? <span class="qa-pill qa-pill-answered">{question.answers.length === 1 ? '1 resposta' : `${question.answers.length} respostas`}</span>
+                : <span class="qa-pill qa-pill-waiting">Aguardando resposta</span>}
+              <p class="qa-card-meta">
+                <span>{question.visitorName} perguntou</span>
+                <time datetime={question.createdAt}>{formatReviewDate(question.createdAt)}</time>
+              </p>
             </div>
-          </div>)}</div> : <p class="soft" style="margin:1rem 0 0;padding-top:1rem;border-top:1px solid #e5e5e5;font-size:.78125rem">Aguardando resposta de um nutricionista.</p>}
-        </article>)}
 
-        {(page > 1 || response?.nextPage) && <nav class="pagination" aria-label="Paginação das dúvidas">
-          {page > 1 && <a class="btn btn-outline btn-sm" rel="prev" href={questionPagePath(page - 1, search)}>Página anterior</a>}
-          <span class="muted" style="font-size:.78125rem">Página {page}</span>
-          {response?.nextPage && <a class="btn btn-outline btn-sm" rel="next" href={questionPagePath(response.nextPage, search)}>Próxima página</a>}
-        </nav>}
-      </section>
+            <h3 class="qa-card-title">{question.title}</h3>
+            <p class="qa-card-body">{question.content}</p>
 
-      <form class="question-form" method="post" action="/api/questions" data-async-form data-success-message="Dúvida publicada e enviada aos nutricionistas.">
-        <div><h2>Envie sua dúvida</h2><p class="hint">Ela será publicada e compartilhada com os nutricionistas.</p></div>
-        <input class="field" aria-label="Seu nome" name="visitorName" minlength="2" maxlength="155" placeholder="Seu nome" required />
-        <input class="field" aria-label="Seu e-mail" name="visitorEmail" maxlength="256" type="email" placeholder="Seu e-mail (opcional)" />
-        <input class="field" aria-label="Título da dúvida" name="title" minlength="5" maxlength="180" placeholder="Título da dúvida" required />
-        <textarea class="textarea" aria-label="Detalhes da dúvida" name="content" minlength="10" maxlength="2000" placeholder="Conte um pouco mais…" required></textarea>
-        <label class="consent"><input type="checkbox" required /><span>Entendo que minha pergunta e meu nome serão publicados para receber respostas.</span></label>
-        <Captcha />
+            {question.answers.length > 0 ? <div class="qa-answers">
+              <p class="qa-answers-label">Resposta do nutricionista</p>
+              {question.answers.map((answer) => <article class="qa-answer">
+                {answer.professionalPhotoUrl
+                  ? <img class="avatar" src={answer.professionalPhotoUrl} alt={`Foto de ${answer.professionalName}`} width="36" height="36" loading="lazy" />
+                  : <span class="avatar avatar-fallback" aria-hidden="true">{catalogInitials(answer.professionalName)}</span>}
+                <div class="qa-answer-body">
+                  <div class="qa-answer-head">
+                    <a class="qa-answer-name" href={`/nutricionistas/${answer.professionalSlug}`}>{answer.professionalName}</a>
+                    <span class="qa-answer-role">Nutricionista · <time datetime={answer.createdAt}>{formatReviewDate(answer.createdAt)}</time></span>
+                  </div>
+                  <p>{answer.content}</p>
+                </div>
+              </article>)}
+            </div> : <p class="qa-pending">Nenhum nutricionista respondeu ainda. Assim que responderem, a resposta aparece aqui.</p>}
+          </article>
+        </li>)}
+      </ol>}
+
+      {(page > 1 || response?.nextPage) && <nav class="qa-pagination" aria-label="Paginação das dúvidas">
+        {page > 1
+          ? <a class="btn btn-outline btn-sm" rel="prev" href={`${questionPagePath(page - 1, search)}#duvidas`}>← Anteriores</a>
+          : <span class="qa-pagination-spacer"></span>}
+        <span class="qa-pagination-page">Página {page}</span>
+        {response?.nextPage
+          ? <a class="btn btn-outline btn-sm" rel="next" href={`${questionPagePath(response.nextPage, search)}#duvidas`}>Próximas →</a>
+          : <span class="qa-pagination-spacer"></span>}
+      </nav>}
+    </section>
+
+    <section class="qa-ask" id="enviar" aria-labelledby="qa-ask-title">
+      <div class="qa-ask-intro">
+        <p class="results-eyebrow">Gratuito</p>
+        <h2 id="qa-ask-title">Envie sua dúvida</h2>
+        <p class="qa-ask-lead">Leva menos de um minuto. Quanto mais contexto você der, melhor a resposta.</p>
+        <ol class="qa-steps">
+          <li class="qa-step"><strong>Você escreve</strong>Conte sua dúvida com o máximo de detalhe possível.</li>
+          <li class="qa-step"><strong>Nutricionistas recebem</strong>Sua pergunta é enviada aos profissionais do catálogo.</li>
+          <li class="qa-step"><strong>A resposta fica pública</strong>Você e quem tiver a mesma dúvida podem consultar.</li>
+        </ol>
+        <p class="qa-ask-privacy">Publicamos seu nome e sua pergunta. Seu e-mail nunca é publicado — usamos só para avisar sobre a resposta.</p>
+      </div>
+
+      <form class="qa-ask-form" method="post" action="/api/questions" data-async-form>
+        <fieldset class="qa-fieldset" data-form-content>
+          <legend class="qa-legend">Sobre você</legend>
+          <div class="qa-row">
+            <label class="qa-field">
+              <span>Seu nome</span>
+              <input class="field" name="visitorName" minlength="2" maxlength="155" placeholder="Como quer ser identificado" required />
+            </label>
+            <label class="qa-field">
+              <span>Seu e-mail <span class="qa-optional">(opcional)</span></span>
+              <input class="field" name="visitorEmail" maxlength="256" type="email" placeholder="voce@email.com" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="qa-fieldset" data-form-content>
+          <legend class="qa-legend">Sua dúvida</legend>
+          <label class="qa-field">
+            <span>Título</span>
+            <input class="field" name="title" minlength="5" maxlength="180" placeholder="Resuma em uma frase — ex.: Posso tomar vitamina D à noite?" required />
+          </label>
+          <label class="qa-field">
+            <span>Detalhes</span>
+            <textarea class="textarea qa-textarea" name="content" minlength="10" maxlength="2000" placeholder="Descreva sua rotina, sintomas, restrições alimentares ou o que já tentou. Não inclua dados sensíveis de saúde que não queira publicar." required data-counter-input></textarea>
+            <p class="hint qa-counter"><span data-counter-output>0</span>/2000 caracteres · mínimo de 10</p>
+          </label>
+        </fieldset>
+
+        <label class="consent" data-form-content><input type="checkbox" required /><span>Entendo que minha pergunta e meu nome serão publicados para receber respostas de nutricionistas.</span></label>
+
+        <div data-form-content><Captcha /></div>
         <p class="form-status" data-form-status aria-live="polite"></p>
-        <button class="btn btn-primary btn-block" type="submit">Enviar dúvida</button>
+        <button class="btn btn-primary btn-block" type="submit" data-form-content>Enviar dúvida</button>
+        <p class="qa-ask-footnote" data-form-content>As respostas são orientações gerais e não substituem uma consulta.</p>
+
+        <section class="qa-success" data-form-success hidden>
+          <h3>Dúvida publicada</h3>
+          <p>Sua pergunta já está no ar e foi enviada aos nutricionistas do catálogo. As respostas aparecem nesta página.</p>
+          <a class="btn btn-outline btn-sm state-action" href="/duvidas#duvidas">Ver as dúvidas publicadas</a>
+        </section>
       </form>
-    </div>
+    </section>
   </main>
   <AsyncFormScript />
+  <script>
+    for (const input of document.querySelectorAll<HTMLTextAreaElement>('[data-counter-input]')) {
+      const output = input.closest('.qa-field')?.querySelector<HTMLElement>('[data-counter-output]')
+      if (!output) continue
+      const sync = () => { output.textContent = String(input.value.length) }
+      input.addEventListener('input', sync)
+      input.form?.addEventListener('reset', () => { window.setTimeout(sync, 0) })
+      sync()
+    }
+  </script>
 </BaseLayout>
