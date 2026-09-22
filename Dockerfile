@@ -15,10 +15,13 @@ WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=4321
+# `apk upgrade` aplica as correcoes ja publicadas pelo Alpine mesmo quando a imagem-base
+# em cache esta velha (Trivy 22/09/2026: libssl3/libcrypto3 3.5.7-r0 -> 3.5.8-r0).
 # npm/npx/corepack nao rodam em runtime (o container so executa `node`), e as deps
 # embutidas do npm (tar, pacote, sigstore, ip-address) trazem CVEs para o scan da
 # imagem — o Trivy de 22/09/2026 acusou tar 7.5.11 como CRITICAL por causa delas.
-RUN apk add --no-cache curl \
+RUN apk upgrade --no-cache \
+    && apk add --no-cache curl \
     && addgroup -S astro \
     && adduser -S astro -G astro \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
