@@ -15,9 +15,14 @@ WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=4321
+# npm/npx/corepack nao rodam em runtime (o container so executa `node`), e as deps
+# embutidas do npm (tar, pacote, sigstore, ip-address) trazem CVEs para o scan da
+# imagem — o Trivy de 22/09/2026 acusou tar 7.5.11 como CRITICAL por causa delas.
 RUN apk add --no-cache curl \
     && addgroup -S astro \
-    && adduser -S astro -G astro
+    && adduser -S astro -G astro \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn*
 COPY --from=build --chown=astro:astro /app/dist ./dist
 COPY --from=build --chown=astro:astro /app/node_modules ./node_modules
 COPY --from=build --chown=astro:astro /app/package.json ./package.json
